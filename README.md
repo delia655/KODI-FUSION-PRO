@@ -17,3 +17,8 @@ Ky repository nuk duhet të përmbajë çelësa Google API, tokena, certifikata 
 
 ## Hapi tjetër
 Integrimi i projektit demonstrues Android dhe testimi në Android Studio. Kodi i plotë burimor i V6.2 nuk është rikuperuar nga APK-ja.
+
+## NISAR (L-band / S-band)
+Prototipi Android përfshin butonin **NISAR** për të hapur burimet zyrtare [NASA/ASF Vertex](https://vertex-plus.asf.alaska.edu/) dhe [ISRO Bhoonidhi](https://bhoonidhi.nrsc.gov.in/NISAR/), me koordinatat WGS84 të qendrës së gridit. Kjo është qasje te katalogët e skenave **jo** një shtresë NISAR e përpunuar brenda hartës.
+
+Shiko [planin e integrimit NISAR](docs/NISAR_INTEGRIMI_SHQIP.md) për hapat HDF5/GeoTIFF dhe kufijtë shkencorë.
