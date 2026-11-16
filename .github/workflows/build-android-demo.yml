@@ -1,0 +1,49 @@
+name: Android Google Satellite — build demo APK
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout public source
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android API 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Configure local Maps key without publishing it
+        env:
+          MAPS_API_KEY: ${{ secrets.KODI_GOOGLE_MAPS_KEY }}
+        run: |
+          printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > android-google-satellite-demo/local.properties
+          if [ -z "$MAPS_API_KEY" ]; then
+            echo "::warning::No KODI_GOOGLE_MAPS_KEY secret: APK compiles but Google tiles will not load."
+          fi
+      - name: Build debug APK (prototype, not V6.2 upgrade)
+        run: gradle --no-daemon -p android-google-satellite-demo :app:assembleDebug
+      - name: Show prototype debug signing SHA-1
+        shell: bash
+        run: |
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep SHA1 || true
+          echo "A debug build has a DIFFERENT package name and signing SHA1 from installed KODI V6.2."
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-google-satellite-demo-debug-apk
+          path: android-google-satellite-demo/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
