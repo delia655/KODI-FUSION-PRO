@@ -1,6 +1,11 @@
 name: Android Google Satellite — build demo APK
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android-google-satellite-demo/**'
+      - '.github/workflows/build-android-demo.yml'
 
 permissions:
   contents: read
