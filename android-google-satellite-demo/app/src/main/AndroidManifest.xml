@@ -2,16 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="KODI Google Satellite Demo"
+        android:label="KODI SURFER 6D · TEST"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
-        <activity android:name=".GoogleSatelliteActivity" android:exported="true">
+        <activity android:name=".SurferSixDActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".SurferPanelActivity" android:exported="false" />
+        <activity android:name=".GoogleSatelliteActivity" android:exported="false" />
     </application>
 </manifest>
