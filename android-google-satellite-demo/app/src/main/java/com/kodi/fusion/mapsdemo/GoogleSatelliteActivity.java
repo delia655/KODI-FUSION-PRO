@@ -29,6 +29,9 @@ import java.util.Locale;
  * The grid represents map geometry; it does NOT sense underground targets.
  */
 public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallback {
+    public static final String EXTRA_LAT = "kodi.lat";
+    public static final String EXTRA_LON = "kodi.lon";
+    public static final String EXTRA_GRID = "kodi.grid";
     private MapView mapView;
     private GoogleMap map;
     private Polygon gridPolygon;
@@ -42,6 +45,15 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (getIntent() != null) {
+            double lat = getIntent().getDoubleExtra(EXTRA_LAT, center.latitude);
+            double lon = getIntent().getDoubleExtra(EXTRA_LON, center.longitude);
+            if (Double.isFinite(lat) && Double.isFinite(lon)
+                    && Math.abs(lat) <= 85.0 && Math.abs(lon) <= 180.0) {
+                center = new LatLng(lat, lon);
+            }
+            sideMeters = getIntent().getIntExtra(EXTRA_GRID, 25) == 50 ? 50 : 25;
+        }
         if (!hasConfiguredKey()) {
             showMissingKeyMessage();
             return;
