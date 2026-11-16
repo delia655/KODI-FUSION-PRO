@@ -1,0 +1,25 @@
+# API keys and Android signing materials
+**/local.properties
+**/secrets.properties
+**/.env
+**/.env.*
+!**/.env.example
+**/google-services.json
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+# Artifacts and private archives
+.gradle/
+**/.gradle/
+.idea/
+**/.idea/
+**/build/
+*.apk
+*.aab
+*.db
+*.sqlite
+private-data/
+user-archives/
+scans-private/
