@@ -22,3 +22,20 @@ Integrimi i projektit demonstrues Android dhe testimi në Android Studio. Kodi i
 Prototipi Android përfshin butonin **NISAR** për të hapur burimet zyrtare [NASA/ASF Vertex](https://vertex-plus.asf.alaska.edu/) dhe [ISRO Bhoonidhi](https://bhoonidhi.nrsc.gov.in/NISAR/), me koordinatat WGS84 të qendrës së gridit. Kjo është qasje te katalogët e skenave **jo** një shtresë NISAR e përpunuar brenda hartës.
 
 Shiko [planin e integrimit NISAR](docs/NISAR_INTEGRIMI_SHQIP.md) për hapat HDF5/GeoTIFF dhe kufijtë shkencorë.
+
+## SURFER · ANALIZA 6D (version demonstrues 0.2)
+Ekrani kryesor i **APK-së së provës** tani ka gjashtë karta në dy rreshta (si pamja e referencës):
+- `SATELIT` — Google Satellite (kërkon Maps API key të kufizuar për nënshkrimin e këtij APK).
+- `HEATMAP` — import lokal i matricës numerike CSV/TXT dhe pamje paraprake me ngjyra.
+- `SAR VV/VH` — panel paraprak për të dhëna radar të përpunuara (jo shkarkim automatik i skenave).
+- `SHTRESAT` — panel i të dhënave të importuara; bashkërenditja gjeohapësinore është në zhvillim.
+- `PROFIL 3D` — panel paraprak numerik 2D; **nuk paraqet ende volum 3D** ose thellësi të matura.
+- `TERREN 3D` — panel paraprak numerik 2D; model real 3D DEM është fazë e ardhshme.
+
+Ka edhe `KRAHASO 6 PAMJET`, zgjedhje gridi 25/50 m dhe `NISAR L/S`.
+Të gjitha panelet që nuk kanë skedar real tregojnë qartë **NUK KA TË DHËNA**, jo anomali të shpikura.
+
+### Prova në Android
+GitHub Actions krijon APK testimi të veçantë me package `com.kodi.fusion.mapsdemo`. Kjo nuk është përditësim i V6.2. Për shkak se GitHub Actions gjeneron certifikatë debug të re, një ndërtim i ardhshëm mund të mos instalohet sipër një ndërtimi më të vjetër; për azhurnime të qëndrueshme duhet një certifikatë private e përhershme.
+
+[GitHub Actions](https://github.com/delia655/KODI-FUSION-PRO/actions) — shiko ndërtimet dhe skedarët e testimit. Data nuk dërgohet në server nga importi lokal CSV/TXT.
