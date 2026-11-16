@@ -144,11 +144,11 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         root.setPadding(24, 40, 24, 20);
         root.setBackgroundColor(Color.rgb(7, 19, 32));
         TextView note = new TextView(this);
-        note.setText("GOOGLE SATELLITE — MODUL TESTIMI\\n\\n"
+        note.setText("GOOGLE SATELLITE — MODUL TESTIMI\n\n"
             + "Çelësi Google Maps nuk është konfiguruar në këtë APK. "
             + "Krijo GitHub Actions secret KODI_GOOGLE_MAPS_KEY dhe rindërto aplikacionin. "
             + "Çelësi duhet të lejojë package com.kodi.fusion.mapsdemo dhe "
-            + "gjurmën SHA-1 të certifikatës së APK-së së provës.\\n\\n"
+            + "gjurmën SHA-1 të certifikatës së APK-së së provës.\n\n"
             + "Gridi është gjeometrik, jo matje e nëntokës.");
         note.setTextColor(Color.WHITE);
         note.setTextSize(17);
@@ -160,6 +160,9 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             startActivity(intent);
         });
         root.addView(open);
+        Button nisar = makeButton("NISAR · L-band NASA / S-band ISRO");
+        nisar.setOnClickListener(v -> showNisarSources());
+        root.addView(nisar);
         setContentView(root);
     }
 
@@ -229,9 +232,9 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         new AlertDialog.Builder(this)
             .setTitle("NISAR · burime të dhënash")
             .setMessage(String.format(Locale.US,
-                "Qendra WGS84: %.6f, %.6f\\nGrid: %d × %d m\\n\\n"
-                + "L-band: NASA / ASF (kërkim dhe shkarkim me Earthdata Login).\\n"
-                + "S-band: ISRO Bhoonidhi (mbulimi ndryshon sipas zonës).\\n\\n"
+                "Qendra WGS84: %.6f, %.6f\nGrid: %d × %d m\n\n"
+                + "L-band: NASA / ASF (kërkim dhe shkarkim me Earthdata Login).\n"
+                + "S-band: ISRO Bhoonidhi (mbulimi ndryshon sipas zonës).\n\n"
                 + "Asnjë hartë NISAR nuk është shkarkuar apo analizuar ende.",
                 center.latitude, center.longitude, sideMeters, sideMeters))
             .setPositiveButton("NISAR L · ASF", (dialog, which) ->
