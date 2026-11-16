@@ -1,6 +1,11 @@
 package com.kodi.fusion.mapsdemo;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.widget.Toast;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -97,6 +102,12 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
         root.addView(bottom);
+
+        Button nisar = makeButton("NISAR · L-band / S-band · TË DHËNA REALE");
+        root.addView(nisar, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT));
+        nisar.setOnClickListener(v -> showNisarSources());
         setContentView(root);
 
         updateCoordinates();
@@ -208,6 +219,45 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             .strokeColor(Color.rgb(0, 225, 220))
             .fillColor(Color.argb(45, 0, 225, 220)));
         centerMarker = map.addMarker(new MarkerOptions().position(center).title("Qendra WGS84"));
+    }
+
+    /**
+     * Opens official data discovery portals. Not an in-app NISAR raster overlay yet.
+     * Coordinates are placed on the clipboard to facilitate a user-directed AOI search.
+     */
+    private void showNisarSources() {
+        new AlertDialog.Builder(this)
+            .setTitle("NISAR · burime të dhënash")
+            .setMessage(String.format(Locale.US,
+                "Qendra WGS84: %.6f, %.6f\\nGrid: %d × %d m\\n\\n"
+                + "L-band: NASA / ASF (kërkim dhe shkarkim me Earthdata Login).\\n"
+                + "S-band: ISRO Bhoonidhi (mbulimi ndryshon sipas zonës).\\n\\n"
+                + "Asnjë hartë NISAR nuk është shkarkuar apo analizuar ende.",
+                center.latitude, center.longitude, sideMeters, sideMeters))
+            .setPositiveButton("NISAR L · ASF", (dialog, which) ->
+                openDataPortal("https://vertex-plus.asf.alaska.edu/"))
+            .setNeutralButton("NISAR S · ISRO", (dialog, which) ->
+                openDataPortal("https://bhoonidhi.nrsc.gov.in/NISAR/"))
+            .setNegativeButton("Kopjo WGS84", (dialog, which) -> {
+                String value = String.format(Locale.US, "%.6f, %.6f",
+                    center.latitude, center.longitude);
+                ClipboardManager cb = (ClipboardManager)
+                    getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cb != null) {
+                    cb.setPrimaryClip(ClipData.newPlainText("NISAR AOI WGS84", value));
+                    Toast.makeText(this, "Koordinatat u kopjuan", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .show();
+    }
+
+    private void openDataPortal(String url) {
+        Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        try {
+            startActivity(browser);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "Nuk u gjet shfletues", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void shareGeoJson() {
