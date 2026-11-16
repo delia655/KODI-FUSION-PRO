@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:label="KODI Google Satellite Demo" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <meta-data android:name="com.google.android.geo.API_KEY" android:value="\${MAPS_API_KEY}" />
+    <application
+        android:label="KODI Google Satellite Demo"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
         <activity android:name=".GoogleSatelliteActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
