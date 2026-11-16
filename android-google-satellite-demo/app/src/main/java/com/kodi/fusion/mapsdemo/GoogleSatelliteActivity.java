@@ -3,6 +3,9 @@ package com.kodi.fusion.mapsdemo;
 import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ApplicationInfo;
+import android.net.Uri;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
@@ -39,6 +42,10 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (!hasConfiguredKey()) {
+            showMissingKeyMessage();
+            return;
+        }
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -92,6 +99,45 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         });
         export.setOnClickListener(v -> shareGeoJson());
         mapView.getMapAsync(this);
+    }
+
+
+    /** An absent key should never produce a mysterious empty satellite screen. */
+    private boolean hasConfiguredKey() {
+        try {
+            ApplicationInfo info = getPackageManager().getApplicationInfo(
+                getPackageName(), PackageManager.GET_META_DATA);
+            if (info.metaData == null) return false;
+            String key = info.metaData.getString("com.google.android.geo.API_KEY");
+            return key != null && !key.trim().isEmpty() && !key.contains("\u0024");
+        } catch (PackageManager.NameNotFoundException ex) {
+            return false;
+        }
+    }
+
+    private void showMissingKeyMessage() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(24, 40, 24, 20);
+        root.setBackgroundColor(Color.rgb(7, 19, 32));
+        TextView note = new TextView(this);
+        note.setText("GOOGLE SATELLITE — MODUL TESTIMI\\n\\n"
+            + "Çelësi Google Maps nuk është konfiguruar në këtë APK. "
+            + "Krijo GitHub Actions secret KODI_GOOGLE_MAPS_KEY dhe rindërto aplikacionin. "
+            + "Çelësi duhet të lejojë package com.kodi.fusion.mapsdemo dhe "
+            + "gjurmën SHA-1 të certifikatës së APK-së së provës.\\n\\n"
+            + "Gridi është gjeometrik, jo matje e nëntokës.");
+        note.setTextColor(Color.WHITE);
+        note.setTextSize(17);
+        root.addView(note);
+        Button open = makeButton("Hap Google Maps veçmas");
+        open.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(
+                "https://www.google.com/maps/@42.312015,21.119746,18z/data=!3m1!1e3"));
+            startActivity(intent);
+        });
+        root.addView(open);
+        setContentView(root);
     }
 
     private LinearLayout.LayoutParams weightedButtonParams() {
@@ -170,14 +216,14 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         startActivity(Intent.createChooser(share, "Ndaj GeoJSON"));
     }
 
-    @Override protected void onStart() { super.onStart(); mapView.onStart(); }
-    @Override protected void onResume() { super.onResume(); mapView.onResume(); }
-    @Override protected void onPause() { mapView.onPause(); super.onPause(); }
-    @Override protected void onStop() { mapView.onStop(); super.onStop(); }
-    @Override protected void onDestroy() { mapView.onDestroy(); super.onDestroy(); }
-    @Override public void onLowMemory() { super.onLowMemory(); mapView.onLowMemory(); }
+    @Override protected void onStart() { super.onStart(); if (mapView != null) mapView.onStart(); }
+    @Override protected void onResume() { super.onResume(); if (mapView != null) mapView.onResume(); }
+    @Override protected void onPause() { if (mapView != null) mapView.onPause(); super.onPause(); }
+    @Override protected void onStop() { if (mapView != null) mapView.onStop(); super.onStop(); }
+    @Override protected void onDestroy() { if (mapView != null) mapView.onDestroy(); super.onDestroy(); }
+    @Override public void onLowMemory() { super.onLowMemory(); if (mapView != null) mapView.onLowMemory(); }
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
-        mapView.onSaveInstanceState(state);
+        if (mapView != null) mapView.onSaveInstanceState(state);
     }
 }
