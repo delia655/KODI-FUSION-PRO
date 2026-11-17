@@ -79,20 +79,16 @@ public final class NisarCatalogSearch {
             String lastError = null;
             boolean anyResponse = false;
 
-            // A 2 km search area around the selected center. SAR footprints
-            // may be much larger than the 25 m / 50 m analytical grid.
-            double dLat=1000.0/111320.0;
-            double dLon=1000.0/(111320.0*Math.max(.05,
-                Math.abs(Math.cos(Math.toRadians(point.latitude)))));
-            String bbox=String.format(Locale.US,"%.6f,%.6f,%.6f,%.6f",
-                point.longitude-dLon,point.latitude-dLat,
-                point.longitude+dLon,point.latitude+dLat);
+            // A CMR point intersection is stricter than a 2 km bounding box:
+            // the selected granule must cover the exact grid center.
+            String cmrPoint=String.format(Locale.US,"%.6f,%.6f",
+                point.longitude,point.latitude);
 
             for (String shortName : COLLECTIONS) {
                 try {
                     String url = BASE+"?provider=ASF&short_name="+
                         URLEncoder.encode(shortName,"UTF-8")
-                        +"&bounding_box="+URLEncoder.encode(bbox,"UTF-8")
+                        +"&point="+URLEncoder.encode(cmrPoint,"UTF-8")
                         +"&sort_key=-start_date&page_size=12";
                     HttpURLConnection conn=(HttpURLConnection)new URL(url).openConnection();
                     conn.setConnectTimeout(12000);
