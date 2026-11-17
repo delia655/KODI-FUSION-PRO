@@ -56,8 +56,10 @@ public final class NasaSarOverlay {
     private GroundOverlay overlay;
     private Bitmap image;
     private Bitmap rawImage;
+    private LatLngBounds preparedBounds;
     private int filter = FILTER_ORIGINAL;
-    private boolean visible = true;
+    // Manual choice: downloads are NEVER displayed until the user taps SHFAQ SAR.
+    private boolean visible = false;
     private String lastSource;
     private String lastDate;
     private float transparency = 0.35f;
@@ -77,13 +79,32 @@ public final class NasaSarOverlay {
         if (overlay != null) overlay.setTransparency(transparency);
     }
 
-    public boolean hasData() { return overlay != null; }
+    /** A non-null staged image is not necessarily displayed on the map. */
+    public boolean hasData() { return rawImage != null && preparedBounds != null; }
     public boolean isVisible() { return overlay != null && visible; }
     public int getFilter() { return filter; }
 
-    public void setVisible(boolean show) {
-        visible = show;
-        if (overlay != null) overlay.setVisible(show);
+    /** User-triggered display only. Calling false hides the image without deleting it. */
+    public boolean setVisible(boolean show) {
+        if (!show) {
+            visible = false;
+            if (overlay != null) overlay.setVisible(false);
+            return true;
+        }
+        if (!hasData() || image == null) return false;
+        if (overlay == null) {
+            overlay = map.addGroundOverlay(new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromBitmap(image))
+                .positionFromBounds(preparedBounds)
+                .transparency(transparency)
+                .visible(true)
+                .zIndex(0.5f));
+            if (overlay == null) return false;
+        } else {
+            overlay.setVisible(true);
+        }
+        visible = true;
+        return true;
     }
 
     /**
@@ -93,12 +114,12 @@ public final class NasaSarOverlay {
     public void setFilter(int selected) {
         if (selected < FILTER_ORIGINAL || selected > FILTER_EDGES) return;
         filter = selected;
-        if (overlay == null || rawImage == null) return;
+        if (rawImage == null) return;
         Bitmap next = processImage(rawImage, filter);
         if (next == null) return;
         Bitmap old = image;
         image = next;
-        overlay.setImage(BitmapDescriptorFactory.fromBitmap(image));
+        if (overlay != null) overlay.setImage(BitmapDescriptorFactory.fromBitmap(image));
         if (old != null && old != rawImage && old != image) old.recycle();
     }
 
@@ -159,12 +180,14 @@ public final class NasaSarOverlay {
         if (rawImage != null) rawImage.recycle();
         image = null;
         rawImage = null;
-        visible = true;
+        visible = false;
+        preparedBounds = null;
         lastSource = null;
         lastDate = null;
     }
 
     /**
+     * Download into temporary RAM only, with no automatic rendering.
      * Request a centered 1,000m footprint. The selected 25/50m grid remains
      * separate, retaining the source sensor's native spatial detail.
      * No zoom-dependent virtual resolution is claimed.
@@ -189,7 +212,7 @@ public final class NasaSarOverlay {
         clear();
         final LatLngBounds bounds = boundsFor(center, 1000.0);
         final int requestId = generation.incrementAndGet();
-        callback.onStatus("Po shkarkohet pamja reale " + label(source)
+        callback.onStatus("MARRJA E TË DHËNAVE · " + label(source)
             + " · " + date + " · NASA GIBS ...");
 
         new Thread(() -> {
@@ -257,17 +280,10 @@ public final class NasaSarOverlay {
                 if (rawImage != null) rawImage.recycle();
                 rawImage = result;
                 image = processImage(rawImage, filter);
-                visible = true;
-                overlay = map.addGroundOverlay(new GroundOverlayOptions()
-                    .image(BitmapDescriptorFactory.fromBitmap(image))
-                    .positionFromBounds(bounds)
-                    .transparency(transparency)
-                    .visible(true)
-                    .zIndex(0.5f));
-                if (overlay == null) {
-                    callback.onFailure("Google Maps nuk pranoi shtresën SAR.");
-                    return;
-                }
+                preparedBounds = bounds;
+                // Do not create Google ground overlay on download.
+                // A distinct user action (SHFAQ SAR) is required.
+                visible = false;
                 lastSource = source;
                 lastDate = date;
                 callback.onSuccess(source, date, bounds);
