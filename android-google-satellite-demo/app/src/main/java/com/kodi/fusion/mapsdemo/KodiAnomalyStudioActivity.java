@@ -58,6 +58,7 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
     private final List<LatLng> vertices = new ArrayList<>();
     private final List<Marker> candidatePins = new ArrayList<>();
     private final List<Circle> heatSpots = new ArrayList<>();
+    private final List<Marker> vertexPins = new ArrayList<>();
     private LatLng center = new LatLng(42.312015, 21.119746);
     private int gridMeters = 25;
     private int selectedLayer = 0;
@@ -201,9 +202,13 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
                 drawArea();
                 status.setText("Poligoni: "+vertices.size()+" pika. Shtyp 'Mbyll zonën'.");
             } else {
+                // A tap outside drawing mode starts a new grid centered here.
+                // Do not leave an old polygon drawn around another location.
+                vertices.clear();
                 center = p;
                 drawArea();
-                status.setText(String.format(Locale.US,"Qendra WGS84: %.6f, %.6f",p.latitude,p.longitude));
+                status.setText(String.format(Locale.US,
+                    "Gridi u zhvendos · Qendra WGS84: %.6f, %.6f",p.latitude,p.longitude));
             }
         });
         drawArea();
@@ -226,7 +231,15 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         if (area != null) {area.remove(); area=null;}
         if (incompleteLine != null) {incompleteLine.remove(); incompleteLine=null;}
         if (centerPin != null) {centerPin.remove(); centerPin=null;}
+        for (Marker pin: vertexPins) pin.remove();
+        vertexPins.clear();
         List<LatLng> p = vertices.isEmpty() ? square() : vertices;
+        for (int i=0; i<vertices.size(); i++) {
+            Marker pin=googleMap.addMarker(new MarkerOptions()
+                .position(vertices.get(i))
+                .title("Kulmi "+(i+1)));
+            if (pin!=null) vertexPins.add(pin);
+        }
         if (p.size() >= 3) {
             area=googleMap.addPolygon(new PolygonOptions().addAll(p)
                 .strokeColor(TEAL).strokeWidth(4f)
@@ -262,30 +275,92 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             b.getHeight()/2f+dp(7),p);
         return b;
     }
+    /** Point-in-polygon with longitude on X, latitude on Y. */
+    private static boolean insidePolygon(LatLng point, List<LatLng> polygon) {
+        if (polygon.size() < 3) return false;
+        boolean inside=false;
+        for (int i=0,j=polygon.size()-1;i<polygon.size();j=i++) {
+            LatLng a=polygon.get(i),b=polygon.get(j);
+            boolean crosses=(a.latitude>point.latitude)!=(b.latitude>point.latitude);
+            if (crosses) {
+                double xAtY=(b.longitude-a.longitude)*
+                    (point.latitude-a.latitude)/(b.latitude-a.latitude)+a.longitude;
+                if (point.longitude < xAtY) inside=!inside;
+            }
+        }
+        return inside;
+    }
+
+    /**
+     * For hand-drawn AOIs, synthetic points MUST belong to the actual polygon.
+     * This is only visual geometry; it is not a geophysical algorithm.
+     */
+    private List<LatLng> syntheticPositions() {
+        List<LatLng> out=new ArrayList<>();
+        if (vertices.size()<3) {
+            double[] dy={0.17,-0.12,0.04};
+            double[] dx={-0.15,0.18,0.08};
+            double scale=gridMeters*0.70;
+            for(int i=0;i<3;i++)
+                out.add(new LatLng(center.latitude+dy[i]*scale/111320.0,
+                    center.longitude+dx[i]*scale/
+                        (111320.0*Math.max(0.05,
+                            Math.abs(Math.cos(Math.toRadians(center.latitude)))))));
+            return out;
+        }
+        double minLat=Double.POSITIVE_INFINITY,maxLat=Double.NEGATIVE_INFINITY;
+        double minLon=Double.POSITIVE_INFINITY,maxLon=Double.NEGATIVE_INFINITY;
+        for (LatLng v:vertices) {
+            minLat=Math.min(minLat,v.latitude);maxLat=Math.max(maxLat,v.latitude);
+            minLon=Math.min(minLon,v.longitude);maxLon=Math.max(maxLon,v.longitude);
+        }
+        ArrayList<LatLng> candidates=new ArrayList<>();
+        final int resolution=48;
+        for(int y=1;y<resolution;y++) {
+            for(int x=1;x<resolution;x++) {
+                LatLng p=new LatLng(minLat+(maxLat-minLat)*y/resolution,
+                    minLon+(maxLon-minLon)*x/resolution);
+                if(insidePolygon(p,vertices)) candidates.add(p);
+            }
+        }
+        // Use three interior points at different positions of the scan.
+        if(candidates.isEmpty()) return out;
+        int[] ids={candidates.size()/5,candidates.size()/2,
+            candidates.size()*4/5};
+        for(int i:ids) {
+            LatLng p=candidates.get(Math.min(i,candidates.size()-1));
+            if(out.isEmpty() || !p.equals(out.get(out.size()-1))) out.add(p);
+        }
+        return out;
+    }
+
     private void generateSyntheticDemo() {
         if (googleMap==null) return;
         if (drawMode) {
             Toast.makeText(this,"Mbyll fillimisht zonën",Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!vertices.isEmpty()) {
-            double lat=0,lon=0;
-            for (LatLng v:vertices){lat+=v.latitude;lon+=v.longitude;}
-            center = new LatLng(lat/vertices.size(),lon/vertices.size());
+        if(selectedLayer!=0){
+            clearDemo();
+            status.setText("Bimësi/Lagështi: nuk ka skena reale të lidhura. "
+                +"DEMO është vetëm për shënjimin e anomalive sintetike.");
+            return;
         }
+        List<LatLng> positions=syntheticPositions();
         clearDemo();
+        if(positions.isEmpty()) {
+            status.setText("Poligoni është tepër i vogël ose i pavlefshëm për pikat DEMO. "
+                +"Vizato një zonë me sipërfaqe.");
+            return;
+        }
         demoReady=true;
         int[] colors={ORANGE,TEAL,0xffe84e5e};
-        double[] y={0.17,-0.12,0.04},x={-0.15,0.18,0.08};
-        double scale=gridMeters*0.70;
-        for (int i=0;i<3;i++) {
-            LatLng p=new LatLng(
-                center.latitude + y[i]*scale/111320.0,
-                center.longitude + x[i]*scale/(111320.0*
-                    Math.max(0.05,Math.abs(Math.cos(Math.toRadians(center.latitude))))));
+        int count=Math.min(colors.length,positions.size());
+        for(int i=0;i<count;i++) {
+            LatLng p=positions.get(i);
             heatSpots.add(googleMap.addCircle(new CircleOptions()
-                .center(p).radius(Math.max(2,gridMeters*0.15))
-                .fillColor(Color.argb(selectedLayer==0?85:46,
+                .center(p).radius(Math.max(1.0,gridMeters*0.07))
+                .fillColor(Color.argb(65,
                     Color.red(colors[i]),Color.green(colors[i]),Color.blue(colors[i])))
                 .strokeColor(Color.argb(140,
                     Color.red(colors[i]),Color.green(colors[i]),Color.blue(colors[i])))
@@ -298,20 +373,28 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         }
         googleMap.setOnMarkerClickListener(marker -> {
             Object tag=marker.getTag();
-            if(tag!=null) {
+            if(tag instanceof Number) {
                 showCandidate(((Number)tag).intValue());
                 return true;
             }
             return false;
         });
-        status.setText("DEMO AKTIV · 3 pika sintetike. Prek numrat për detaje.");
+        status.setText("DEMO AKTIV · "+candidatePins.size()
+            +" pika sintetike brenda zonës. Nuk ka skanim real satelitor.");
     }
+
     private void changeLayer(int mode) {
         selectedLayer=mode;
-        String name=mode==0?"Anomali":mode==1?"Bimësi":"Lagështi";
-        if(demoReady) generateSyntheticDemo();
-        status.setText("Shtresa: "+name+". "
-            +(demoReady?"Pamje SIMULIM, jo rezultat satelitor.":"Ende pa të dhëna reale."));
+        clearDemo();
+        if (mode==0) {
+            status.setText("ANOMALI · vetëm simulim i qartë. "
+                +"Shtyp DEMO · ANALIZË për pika shembull.");
+        } else {
+            String name=mode==1?"Bimësi":"Lagështi";
+            status.setText(name.toUpperCase(Locale.ROOT)
+                +" · PA TË DHËNA. Nuk është lidhur Sentinel-2 L2A. "
+                +"Pikat e mëparshme DEMO janë fshehur.");
+        }
     }
     private String reportText() {
         return String.format(Locale.US,
@@ -327,7 +410,7 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             "Pikat e DEMO-s janë të krijuara artificialisht për të provuar ndërfaqen.",
             center.latitude,center.longitude,
             vertices.size()>=3 ? "Poligon me "+vertices.size()+" kulme" : gridMeters+"×"+gridMeters+" m",
-            demoReady ? "3 sintetike" : "0");
+            demoReady ? candidatePins.size()+" sintetike" : "0");
     }
     private void showCandidate(int i) {
         new AlertDialog.Builder(this).setTitle("Pika #"+i+" · DEMO")
@@ -364,6 +447,13 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             .setPositiveButton("OK",null).show();
     }
     private void show3D() {
+        if (!demoReady) {
+            new AlertDialog.Builder(this).setTitle("3D · pa të dhëna")
+                .setMessage("Nuk ka pikë aktive. Shtyp DEMO · ANALIZË për një "
+                    +"ilustrim 3D; një model 3D real kërkon matje të vërteta.")
+                .setPositiveButton("OK",null).show();
+            return;
+        }
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(8),dp(8),dp(8),dp(8));
