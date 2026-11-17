@@ -51,12 +51,12 @@ jobs:
               try:
                   req=urllib.request.Request(url,headers={"User-Agent":"KODI-SAR-test/0.4"})
                   with urllib.request.urlopen(req,timeout=20) as reply:
-                      head=reply.read(16)
+                      head=reply.read(1200)
                       if not head.startswith(b"\x89PNG\r\n\x1a\n"):
                           raise RuntimeError("No PNG signature: "+repr(head))
                       print("NASA GIBS responds with PNG for",layer)
               except Exception as exc:
-                  print("WARNING: NASA WMS imagery not verified:",layer,str(exc)[:200])
+                  print("WARNING: NASA WMS imagery not verified:",layer,str(exc)[:1100])
           PY
       - name: Configure local Maps key without publishing it
         env:
