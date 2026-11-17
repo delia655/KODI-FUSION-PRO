@@ -35,6 +35,29 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Probe public NASA SAR WMS sources (non-blocking)
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.parse, urllib.request
+          base="https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
+          for layer in ("NISAR_L2_Geocoded_Polarimetric_Covariance_12Day",
+                        "OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1_12Day"):
+              params=dict(SERVICE="WMS",VERSION="1.1.1",REQUEST="GetMap",LAYERS=layer,
+                          STYLES="",SRS="EPSG:4326",FORMAT="image/png",TRANSPARENT="TRUE",
+                          WIDTH=128,HEIGHT=128,BBOX="-151.7,61.0,-151.5,61.2",TIME="2026-10-01")
+              url=base+"?"+urllib.parse.urlencode(params)
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"KODI-SAR-test/0.4"})
+                  with urllib.request.urlopen(req,timeout=20) as reply:
+                      head=reply.read(16)
+                      if not head.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+                          raise RuntimeError("No PNG signature: "+repr(head))
+                      print("NASA GIBS responds with PNG for",layer)
+              except Exception as exc:
+                  print("WARNING: NASA WMS imagery not verified:",layer,str(exc)[:200])
+          PY
       - name: Configure local Maps key without publishing it
         env:
           MAPS_API_KEY: ${{ secrets.KODI_GOOGLE_MAPS_KEY }}
