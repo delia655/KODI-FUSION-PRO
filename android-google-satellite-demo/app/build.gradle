@@ -8,11 +8,11 @@ android {
     namespace 'com.kodi.fusion.mapsdemo'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.kodi.fusion.mapsdemo'
+        applicationId 'com.kodi.fusion.mapsdemo.repair20261117'
         minSdk 23
         targetSdk 34
-        versionCode 7
-        versionName '0.6-sar-fetch-show-filters'
+        versionCode 8
+        versionName '0.8-osm-map-install-repair'
         manifestPlaceholders = [MAPS_API_KEY: (localProps.getProperty('MAPS_API_KEY') ?: '')]
     }
     compileOptions {
@@ -22,4 +22,5 @@ android {
 }
 dependencies {
     implementation 'com.google.android.gms:play-services-maps:19.2.0'
+    implementation 'org.osmdroid:osmdroid-android:6.1.20'
 }
