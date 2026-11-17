@@ -60,3 +60,14 @@ Në GeoTrace, `HARTA GOOGLE · SHËNO PIKA` hap hartën native **brenda APK-së*
 **Për hartën Google** duhet secret-i privat `KODI_GOOGLE_MAPS_KEY`, me kufizim Android për `com.kodi.fusion.mapsdemo` dhe SHA-1 të certifikatës së APK-së. Për SHA-1 të qëndrueshme, CI mbështet secret-in opsional `KODI_DEBUG_KEYSTORE_B64`, por nuk ka ende të konfiguruar një keystore të përhershëm.
 
 Shiko [udhëzimet Google + SAR](docs/GOOGLE_SATELLITE_SAR_SHQIP.md). Mos publiko kredenciale ose skedarë privatë.
+
+## NISAR / Sentinel-1 manual në Google Satellite (v0.6)
+
+1. Google Satellite hapet **brenda aplikacionit** si hartë bazë dhe **SAR është i fshehur** kur hapet.
+2. `KËRKO NISAR` kërkon metadata të skenave `L2 GCOV` në NASA CMR; mund të zgjedhësh skenën e datën (nuk shkarkohet HDF5 në këtë version).
+3. `MERR PAMJEN` shkarkon vetëm pamjen vizuale NASA GIBS WMS dhe e mban përkohësisht në memorien e telefonit. **Nuk shfaqet ende mbi Google**.
+4. `FILTRA PAMORË` aplikon Origjinal, Bardhë e zi, Kontrast ose Konture mbi pikselët PNG të marrë. Nuk janë filtra shkencorë të vlerave radar.
+5. `SHFAQ SAR` është veprimi i **vetëm** që e vendos shtresën mbi Google; `FSHEH SAR` e fsheh pa hequr pamjen nga memoria dhe `HIQ SAR` e fshin nga memoria.
+6. `Dukshmëria SAR` kontrollon transparencën dhe gridi 25×25/50×50 m mbetet gjeometrik, jo rezolucion sensorik.
+
+Produkti **L-band NISAR GCOV/HDF5** kërkon autentikim NASA Earthdata për shkarkimin origjinal dhe përpunim shtesë të vlerave; kjo pjesë ende nuk ekziston në prototip. Nuk premtohet mbulim në çdo ditë apo koordinatë. Skenat dhe pikselët nuk janë verifikuar në telefon për çdo zonë.
