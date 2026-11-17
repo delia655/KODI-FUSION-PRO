@@ -58,6 +58,29 @@ jobs:
               except Exception as exc:
                   print("WARNING: NASA WMS imagery not verified:",layer,str(exc)[:1100])
           PY
+      - name: Verify public NASA CMR NISAR catalog API (non-blocking)
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request
+          source="https://cmr.earthdata.nasa.gov/search/granules.json"
+          for name in ("NISAR_L2_GCOV_V1", "NISAR_L2_GCOV_PROVISIONAL_V1",
+                       "NISAR_L2_GCOV_BETA_V1"):
+              params={"provider":"ASF", "short_name":name, "sort_key":"-start_date",
+                      "page_size":"2", "bounding_box":"-150.0,60.9,-149.6,61.3"}
+              try:
+                  url=source+"?"+urllib.parse.urlencode(params)
+                  request=urllib.request.Request(url,
+                      headers={"Accept":"application/json","User-Agent":"KODI-CMR-test/0.5"})
+                  with urllib.request.urlopen(request,timeout=18) as response:
+                      data=json.load(response)
+                  entries=data.get("feed",{}).get("entry",[])
+                  print("CMR OK",name,"entries",len(entries),
+                        "latest",entries[0].get("time_start","none") if entries else "none")
+              except Exception as ex:
+                  print("CMR FAILED",name,str(ex)[:350])
+          PY
       - name: Configure local Maps key without publishing it
         env:
           MAPS_API_KEY: ${{ secrets.KODI_GOOGLE_MAPS_KEY }}
