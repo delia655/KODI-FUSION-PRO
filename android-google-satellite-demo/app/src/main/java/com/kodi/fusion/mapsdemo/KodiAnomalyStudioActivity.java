@@ -61,6 +61,7 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
     private final List<LatLng> vertices = new ArrayList<>();
     private final List<Marker> candidatePins = new ArrayList<>();
     private final List<Circle> heatSpots = new ArrayList<>();
+    private final List<Polyline> candidateLinks = new ArrayList<>();
     private final List<LatLng> demoPoints = new ArrayList<>();
     private final List<Marker> vertexPins = new ArrayList<>();
     private LatLng center = new LatLng(42.312015, 21.119746);
@@ -390,6 +391,8 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         for (Circle c:heatSpots) c.remove();
         candidatePins.clear();
         heatSpots.clear();
+        for (Polyline link: candidateLinks) link.remove();
+        candidateLinks.clear();
         demoPoints.clear();
         if(scanCounter!=null)scanCounter.setText("VËZHGIME: 0 · WGS84 · PA MATJE TË DHËNASH");
     }
@@ -432,14 +435,20 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
     private List<LatLng> syntheticPositions() {
         List<LatLng> out=new ArrayList<>();
         if (vertices.size()<3) {
-            double[] dy={0.17,-0.12,0.04};
-            double[] dx={-0.15,0.18,0.08};
-            double scale=gridMeters*0.70;
-            for(int i=0;i<3;i++)
-                out.add(new LatLng(center.latitude+dy[i]*scale/111320.0,
-                    center.longitude+dx[i]*scale/
+            // 18 evenly distributed examples, all strictly inside the grid.
+            for(int row=0;row<3;row++) {
+                for(int col=0;col<6;col++) {
+                    double fx=(col+0.5)/6.0-0.5;
+                    double fy=(row+0.5)/3.0-0.5;
+                    double jitterX=Math.sin((col+1)*(row+3)*2.7)*0.025;
+                    double jitterY=Math.cos((col+4)*(row+1)*1.9)*0.025;
+                    double dy=(fy+jitterY)*gridMeters/111320.0;
+                    double dx=(fx+jitterX)*gridMeters/
                         (111320.0*Math.max(0.05,
-                            Math.abs(Math.cos(Math.toRadians(center.latitude)))))));
+                            Math.abs(Math.cos(Math.toRadians(center.latitude)))));
+                    out.add(new LatLng(center.latitude+dy,center.longitude+dx));
+                }
+            }
             return out;
         }
         double minLat=Double.POSITIVE_INFINITY,maxLat=Double.NEGATIVE_INFINITY;
@@ -457,13 +466,11 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
                 if(insidePolygon(p,vertices)) candidates.add(p);
             }
         }
-        // Use three interior points at different positions of the scan.
         if(candidates.isEmpty()) return out;
-        int[] ids={candidates.size()/5,candidates.size()/2,
-            candidates.size()*4/5};
-        for(int i:ids) {
-            LatLng p=candidates.get(Math.min(i,candidates.size()-1));
-            if(out.isEmpty() || !p.equals(out.get(out.size()-1))) out.add(p);
+        int count=Math.min(18,candidates.size());
+        for(int i=0;i<count;i++) {
+            int index=(int)Math.floor((i+0.5)*candidates.size()/count);
+            out.add(candidates.get(Math.min(index,candidates.size()-1)));
         }
         return out;
     }
@@ -488,23 +495,37 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             return;
         }
         demoReady=true;
-        int[] colors={ORANGE,TEAL,0xffe84e5e};
-        int count=Math.min(colors.length,positions.size());
+        int[] colors={0xfff5a623,0xff20b9dc,0xff5bc582,
+            0xffee565f,0xfff5a623,0xff20b9dc,
+            0xffee565f,0xff5bc582,0xffee565f};
+        int count=positions.size();
         for(int i=0;i<count;i++) {
             LatLng p=positions.get(i);
+            demoPoints.add(p);
+            int color=colors[i % colors.length];
             heatSpots.add(googleMap.addCircle(new CircleOptions()
                 .center(p).radius(Math.max(1.0,gridMeters*0.07))
                 .fillColor(Color.argb(65,
-                    Color.red(colors[i]),Color.green(colors[i]),Color.blue(colors[i])))
+                    Color.red(color),Color.green(color),Color.blue(color)))
                 .strokeColor(Color.argb(140,
-                    Color.red(colors[i]),Color.green(colors[i]),Color.blue(colors[i])))
+                    Color.red(color),Color.green(color),Color.blue(color)))
                 .strokeWidth(1.5f)));
             Marker marker=googleMap.addMarker(new MarkerOptions().position(p)
-                .icon(BitmapDescriptorFactory.fromBitmap(numberCircle(i+1,colors[i])))
+                .icon(BitmapDescriptorFactory.fromBitmap(numberCircle(i+1,color)))
                 .title("DEMO · Pika "+(i+1))
                 .snippet("Shembull sintetik. Jo anomali e zbuluar."));
             if (marker!=null){marker.setTag(i+1);candidatePins.add(marker);}
         }
+        // Cyan lines are schematic DEMO connectivity, not detected tunnels.
+        for(int i=0;i+1<demoPoints.size();i++) {
+            if(i%6==5) continue;
+            candidateLinks.add(googleMap.addPolyline(new PolylineOptions()
+                .add(demoPoints.get(i),demoPoints.get(i+1))
+                .color(0xff00d3d9).width(3.2f)));
+        }
+        if(scanCounter!=null)
+            scanCounter.setText("VËZHGIME DEMO: "+candidatePins.size()
+                +"  ·  MODELI: SINTETIK  ·  THELLËSIA: E PANJOHUR");
         googleMap.setOnMarkerClickListener(marker -> {
             Object tag=marker.getTag();
             if(tag instanceof Number) {
@@ -549,20 +570,28 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         }
     }
     private String reportText() {
-        return String.format(Locale.US,
-            "KODI FUSION PRO · RAPORT DEMONSTRUES\n"+
-            "WGS84: %.6f, %.6f\n"+
-            "Zona: %s\n"+
-            "Pikat: %s\n"+
-            "Skenat satelitore: ASNJË\n"+
-            "Matje GPR/ERT: ASNJË\n"+
-            "Thellësia: E PANJOHUR\n"+
-            "Besueshmëri statistikore: NUK ËSHTË LLOGARITUR\n"+
-            "Nuk janë identifikuar zgavra, metale apo objekte. "+
-            "Pikat e DEMO-s janë të krijuara artificialisht për të provuar ndërfaqen.",
-            center.latitude,center.longitude,
-            vertices.size()>=3 ? "Poligon me "+vertices.size()+" kulme" : gridMeters+"×"+gridMeters+" m",
-            demoReady ? candidatePins.size()+" sintetike" : "0");
+        StringBuilder r=new StringBuilder();
+        r.append("KODI FUSION PRO · RAPORT DEMONSTRUES\\n");
+        r.append(String.format(Locale.US,"Qendra WGS84: %.6f, %.6f\\n",
+            center.latitude,center.longitude));
+        r.append("Zona: ").append(vertices.size()>=3
+            ? "Poligon / "+vertices.size()+" kulme"
+            : gridMeters+" × "+gridMeters+" m").append("\\n");
+        r.append("Gjendja e burimeve: NUK JANË SHKARKUAR RASTERE\\n");
+        r.append("Sentinel-1 / Sentinel-2 / NISAR: JO ANALIZUAR\\n");
+        r.append("GPR / ERT / magnetometri: NUK KA MATJE\\n");
+        r.append("Zgavër ose metal i konfirmuar: ASNJË\\n");
+        r.append("Thellësia: E PANJOHUR\\n");
+        r.append("Besueshmëria shkencore: NUK ËSHTË LLOGARITUR\\n\\n");
+        r.append("Pika sintetike: ").append(demoPoints.size()).append("\\n");
+        for(int i=0;i<demoPoints.size();i++) {
+            LatLng point=demoPoints.get(i);
+            r.append(String.format(Locale.US,"#%02d  %.6f, %.6f [DEMO]\\n",
+                i+1,point.latitude,point.longitude));
+        }
+        r.append("\\nKëto pika ilustrojnë navigimin dhe raportimin. ");
+        r.append("Asnjëra nuk është zbulim nga sateliti apo matje nëntokësore.");
+        return r.toString();
     }
     private void showCandidate(int i) {
         new AlertDialog.Builder(this).setTitle("Pika #"+i+" · DEMO")
