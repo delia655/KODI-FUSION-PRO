@@ -43,6 +43,20 @@ jobs:
           if [ -z "$MAPS_API_KEY" ]; then
             echo "::warning::No KODI_GOOGLE_MAPS_KEY secret: APK compiles but Google tiles will not load."
           fi
+      - name: Restore stable debug keystore from a PRIVATE secret (optional)
+        env:
+          STABLE_KEYSTORE_B64: ${{ secrets.KODI_DEBUG_KEYSTORE_B64 }}
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ -n "$STABLE_KEYSTORE_B64" ]; then
+            printf '%s' "$STABLE_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+            chmod 600 "$HOME/.android/debug.keystore"
+            keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+            echo "Stable PRIVATE signing key loaded; API key may be restricted to its SHA-1."
+          else
+            echo "::warning::No KODI_DEBUG_KEYSTORE_B64. New debug builds may have differing SHA-1 fingerprints."
+          fi
       - name: Build debug APK (prototype, not V6.2 upgrade)
         run: gradle --no-daemon -p android-google-satellite-demo :app:assembleDebug
       - name: Show prototype debug signing SHA-1
