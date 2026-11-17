@@ -201,8 +201,8 @@ public final class NasaSarOverlay {
 
     public static String buildUrl(String source, String date, LatLngBounds bounds) {
         String layer = SOURCE_NISAR.equals(source)
-            ? "NISAR_L2_Geocoded_Polarimetric_Covariance_12Day"
-            : "OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1_12Day";
+            ? "NISAR_L2_Geocoded_Polarimetric_Covariance"
+            : "OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1";
         // WMS 1.1.1 uses lon,lat axis ordering with EPSG:4326.
         String box = String.format(Locale.US, "%.8f,%.8f,%.8f,%.8f",
             bounds.southwest.longitude, bounds.southwest.latitude,
