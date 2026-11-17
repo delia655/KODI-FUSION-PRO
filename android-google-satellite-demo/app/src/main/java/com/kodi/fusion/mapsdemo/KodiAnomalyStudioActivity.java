@@ -7,6 +7,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.GradientDrawable;
+import android.widget.FrameLayout;
+import com.google.android.gms.maps.model.CameraPosition;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -58,12 +61,14 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
     private final List<LatLng> vertices = new ArrayList<>();
     private final List<Marker> candidatePins = new ArrayList<>();
     private final List<Circle> heatSpots = new ArrayList<>();
+    private final List<LatLng> demoPoints = new ArrayList<>();
     private final List<Marker> vertexPins = new ArrayList<>();
     private LatLng center = new LatLng(42.312015, 21.119746);
     private int gridMeters = 25;
     private int selectedLayer = 0;
     private boolean drawMode = false;
     private boolean demoReady = false;
+    private TextView scanCounter;
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
@@ -81,6 +86,12 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         b.setTextSize(11);
         b.setAllCaps(false);
         b.setMinHeight(0);
+        b.setTextColor(Color.WHITE);
+        GradientDrawable bg=new GradientDrawable();
+        bg.setColor(0xff533d94);
+        bg.setCornerRadius(dp(15));
+        bg.setStroke(dp(1),0xff786bb0);
+        b.setBackground(bg);
         return b;
     }
     private void addWeighted(LinearLayout row, View view) {
@@ -108,60 +119,170 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         LinearLayout root = new LinearLayout(this);
         root.setBackgroundColor(NAVY);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(7), dp(5), dp(7), dp(7));
-        TextView title = label("KODI FUSION PRO · ANOMALY STUDIO", 16, Color.WHITE);
-        title.setPadding(dp(5), dp(6), dp(5), dp(1));
-        root.addView(title);
-        TextView disclaimer = label("DEMO VIZUALE · pika sintetike · jo rezultat satelitor", 11, ORANGE);
-        disclaimer.setPadding(dp(5), dp(2), dp(5), dp(3));
+        root.setPadding(dp(5), dp(5), dp(5), dp(6));
+
+        LinearLayout top = row();
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title=label("KODI FUSION PRO  ·  GEO STUDIO",15,Color.WHITE);
+        title.setPadding(dp(7),dp(9),dp(4),dp(4));
+        top.addView(title,new LinearLayout.LayoutParams(0,dp(46),1f));
+        Button topReport=button("Raporti");
+        addWeighted(top,topReport);
+        root.addView(top);
+
+        TextView disclaimer = label(
+            "DEMO E NDËRFAQES · Pa imazhe SAR/optike të analizuara",11,ORANGE);
+        disclaimer.setPadding(dp(8), dp(3), dp(5), dp(7));
         root.addView(disclaimer);
+
         LinearLayout tools = row();
-        Button grid25 = button("25×25 m");
-        Button grid50 = button("50×50 m");
-        drawButton = button("Vizato zonë");
+        Button grid25=button("25×25 m");
+        Button grid50=button("50×50 m");
+        drawButton=button("Vizato zonën");
         addWeighted(tools,grid25);
         addWeighted(tools,grid50);
         addWeighted(tools,drawButton);
         root.addView(tools);
 
+        FrameLayout mapFrame = new FrameLayout(this);
         mapView = new MapView(this);
         mapView.onCreate(state);
-        root.addView(mapView,new LinearLayout.LayoutParams(-1,0,1f));
+        mapFrame.addView(mapView,new FrameLayout.LayoutParams(-1,-1));
 
-        status = label("Harta satelitore. Zgjidh gridin ose vizato poligonin.", 12, 0xffa7f3ee);
-        status.setPadding(dp(5), dp(7), dp(5), dp(5));
-        root.addView(status);
+        LinearLayout mapLeft = new LinearLayout(this);
+        mapLeft.setOrientation(LinearLayout.VERTICAL);
+        Button centerMap=button("⌖");
+        Button satellite=button("Satelit");
+        Button clearMap=button("Pastro");
+        Button sourcesMap=button("Shtresat");
+        for(Button item:new Button[]{centerMap,satellite,clearMap,sourcesMap}){
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(80),dp(44));
+            p.setMargins(0,dp(2),0,dp(5));
+            mapLeft.addView(item,p);
+        }
+        FrameLayout.LayoutParams leftParams=new FrameLayout.LayoutParams(
+            dp(82),-2,Gravity.START|Gravity.TOP);
+        leftParams.setMargins(dp(9),dp(12),0,0);
+        mapFrame.addView(mapLeft,leftParams);
 
-        LinearLayout layers = row();
-        Button anomalies = button("Anomali");
-        Button plants = button("Bimësi");
-        Button moisture = button("Lagështi");
-        addWeighted(layers, anomalies);
-        addWeighted(layers, plants);
-        addWeighted(layers, moisture);
-        root.addView(layers);
+        LinearLayout mapRight = new LinearLayout(this);
+        mapRight.setOrientation(LinearLayout.VERTICAL);
+        Button view2D=button("2D");
+        Button view3D=button("3D hartë");
+        for(Button item:new Button[]{view2D,view3D}){
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(85),dp(43));
+            p.setMargins(0,dp(2),0,dp(5));
+            mapRight.addView(item,p);
+        }
+        FrameLayout.LayoutParams rightParams=new FrameLayout.LayoutParams(
+            dp(90),-2,Gravity.END|Gravity.TOP);
+        rightParams.setMargins(0,dp(12),dp(8),0);
+        mapFrame.addView(mapRight,rightParams);
 
-        LinearLayout actions = row();
-        Button simulate = button("DEMO · ANALIZË");
-        Button report = button("RAPORTI");
-        Button volume = button("3D");
-        addWeighted(actions, simulate);
-        addWeighted(actions, report);
-        addWeighted(actions, volume);
-        root.addView(actions);
+        TextView mapFlag=label(
+            "KODI · PAMJE PROVE — ASNJË ZBULIM I KONFIRMUAR",10,Color.WHITE);
+        mapFlag.setBackgroundColor(0xc9001e2c);
+        mapFlag.setPadding(dp(10),dp(8),dp(10),dp(8));
+        FrameLayout.LayoutParams flagParams=new FrameLayout.LayoutParams(
+            -1,-2,Gravity.BOTTOM);
+        flagParams.setMargins(dp(5),0,dp(5),dp(7));
+        mapFrame.addView(mapFlag,flagParams);
+        root.addView(mapFrame,new LinearLayout.LayoutParams(-1,0,1f));
 
-        LinearLayout footer = row();
-        Button real = button("BURIMET REALE");
-        Button export = button("NDAJ RAPORTIN");
-        addWeighted(footer, real);
-        addWeighted(footer, export);
-        root.addView(footer);
+        LinearLayout bottomPanel=new LinearLayout(this);
+        bottomPanel.setBackgroundColor(0xff071826);
+        bottomPanel.setPadding(dp(4),dp(7),dp(4),dp(5));
+        bottomPanel.setOrientation(LinearLayout.VERTICAL);
+        root.addView(bottomPanel);
+
+        scanCounter=label("VËZHGIME: 0  ·  WGS84 · PA MATJE TË DHËNASH",11,TEAL);
+        scanCounter.setPadding(dp(5),dp(4),dp(5),dp(5));
+        bottomPanel.addView(scanCounter);
+
+        status=label("Prek hartën për qendrën. Vizato poligonin ose zgjidh gridin.",
+            12,0xffb8e3e0);
+        status.setPadding(dp(5),dp(4),dp(5),dp(7));
+        bottomPanel.addView(status);
+
+        TextView layerHeader=label("SHTRESAT E TË DHËNAVE",10,0xffb2bed4);
+        layerHeader.setPadding(dp(4),dp(4),0,dp(2));
+        bottomPanel.addView(layerHeader);
+        LinearLayout layers=row();
+        Button anomalies=button("Anomali");
+        Button plants=button("Bimësi");
+        Button moisture=button("Lagështi");
+        Button radar=button("Radar SAR");
+        addWeighted(layers,anomalies);
+        addWeighted(layers,plants);
+        addWeighted(layers,moisture);
+        addWeighted(layers,radar);
+        bottomPanel.addView(layers);
+
+        TextView scanHeader=label("MODALITETI I SKANIMIT",10,0xffb2bed4);
+        scanHeader.setPadding(dp(4),dp(6),0,dp(2));
+        bottomPanel.addView(scanHeader);
+        LinearLayout scanModes=row();
+        Button visualMode=button("Optik / Reliev");
+        Button thermalMode=button("Termik");
+        Button gpsMode=button("Mbulimi GPS");
+        addWeighted(scanModes,visualMode);
+        addWeighted(scanModes,thermalMode);
+        addWeighted(scanModes,gpsMode);
+        bottomPanel.addView(scanModes);
+
+        LinearLayout actions=row();
+        Button simulate=button("DEMO · SKANO ZONËN");
+        Button report=button("Raport");
+        Button volume=button("3D volum");
+        addWeighted(actions,simulate);
+        addWeighted(actions,report);
+        addWeighted(actions,volume);
+        bottomPanel.addView(actions);
+
+        LinearLayout footer=row();
+        Button real=button("Burimet reale");
+        Button export=button("Ndaj raportin");
+        addWeighted(footer,real);
+        addWeighted(footer,export);
+        bottomPanel.addView(footer);
         setContentView(root);
 
+        topReport.setOnClickListener(v->showReport());
+        centerMap.setOnClickListener(v->{
+            if(googleMap!=null)
+                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(center,19f));
+        });
+        satellite.setOnClickListener(v->{
+            if(googleMap!=null){
+                boolean hybrid=googleMap.getMapType()==GoogleMap.MAP_TYPE_HYBRID;
+                googleMap.setMapType(hybrid?GoogleMap.MAP_TYPE_SATELLITE:
+                    GoogleMap.MAP_TYPE_HYBRID);
+                satellite.setText(hybrid?"Satelit":"Hibrid");
+            }
+        });
+        clearMap.setOnClickListener(v->{
+            clearDemo();vertices.clear();drawMode=false;
+            drawButton.setText("Vizato zonën");drawArea();
+            status.setText("Pikat DEMO dhe poligoni u pastruan. "
+                +"Qendra dhe gridi mbeten të disponueshëm.");
+        });
+        sourcesMap.setOnClickListener(v->showDataSources());
+        view2D.setOnClickListener(v->setMapTilt(false));
+        view3D.setOnClickListener(v->setMapTilt(true));
+        radar.setOnClickListener(v->showUnavailableLayer("Radar Sentinel-1"));
+        visualMode.setOnClickListener(v->showUnavailableLayer("Optik/Reliev"));
+        thermalMode.setOnClickListener(v->showUnavailableLayer("Termik Landsat"));
+        gpsMode.setOnClickListener(v->new AlertDialog.Builder(this)
+            .setTitle("Mbulimi GPS")
+            .setMessage("Nuk është aktivizuar regjistrimi GPS në këtë modul. "
+                +"Nuk krijojmë gjurmë artificiale. "
+                +"GeoTrace në aplikacion shërben për gjurmim real të pikave.")
+            .setPositiveButton("OK",null).show());
+
         grid25.setOnClickListener(v -> { gridMeters=25; vertices.clear(); drawMode=false;
-            drawButton.setText("Vizato zonë"); clearDemo(); drawArea(); });
+            drawButton.setText("Vizato zonën"); clearDemo(); drawArea(); });
         grid50.setOnClickListener(v -> { gridMeters=50; vertices.clear(); drawMode=false;
-            drawButton.setText("Vizato zonë"); clearDemo(); drawArea(); });
+            drawButton.setText("Vizato zonën"); clearDemo(); drawArea(); });
         drawButton.setOnClickListener(v -> {
             if (!drawMode) {
                 vertices.clear();
@@ -269,6 +390,8 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         for (Circle c:heatSpots) c.remove();
         candidatePins.clear();
         heatSpots.clear();
+        demoPoints.clear();
+        if(scanCounter!=null)scanCounter.setText("VËZHGIME: 0 · WGS84 · PA MATJE TË DHËNASH");
     }
     private Bitmap numberCircle(int number, int color) {
         Bitmap b=Bitmap.createBitmap(dp(45), dp(45), Bitmap.Config.ARGB_8888);
@@ -394,6 +517,24 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             +" pika sintetike brenda zonës. Nuk ka skanim real satelitor.");
     }
 
+    private void setMapTilt(boolean is3D) {
+        if(googleMap==null) return;
+        CameraPosition next=new CameraPosition.Builder(googleMap.getCameraPosition())
+            .tilt(is3D?55f:0f).build();
+        googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(next));
+        status.setText(is3D
+            ? "3D HARTË · pjerrësi e pamjes Google; jo model i nëntokës."
+            : "2D HARTË · pamja satelitore nga lart.");
+    }
+    private void showUnavailableLayer(String name) {
+        clearDemo();
+        status.setText(name+" · nuk ka produkt real të ngarkuar.");
+        new AlertDialog.Builder(this).setTitle(name+" · PA TË DHËNA")
+            .setMessage("Kjo shtresë do të funksionojë pasi të lidhen "
+                +"produktet reale dhe përpunimi për zonën. "
+                +"Nuk shfaqen ngjyra të sajuara si të dhëna të matura.")
+            .setPositiveButton("OK",null).show();
+    }
     private void changeLayer(int mode) {
         selectedLayer=mode;
         clearDemo();
