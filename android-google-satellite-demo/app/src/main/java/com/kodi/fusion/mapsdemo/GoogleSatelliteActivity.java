@@ -167,6 +167,17 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         viewControls.addView(filterButton, weightedButtonParams());
         viewControls.addView(layerVisibilityButton, weightedButtonParams());
         root.addView(viewControls);
+        Button studio = makeButton("ANALIZA E ZONËS · RAPORT & 3D (DEMO)");
+        root.addView(studio, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT));
+        studio.setOnClickListener(v -> {
+            Intent i=new Intent(this,KodiAnomalyStudioActivity.class);
+            i.putExtra(EXTRA_LAT,center.latitude);
+            i.putExtra(EXTRA_LON,center.longitude);
+            i.putExtra(EXTRA_GRID,sideMeters);
+            startActivity(i);
+        });
         filterButton.setOnClickListener(v -> showSarFilters());
         layerVisibilityButton.setOnClickListener(v -> toggleSarVisibility());
 
