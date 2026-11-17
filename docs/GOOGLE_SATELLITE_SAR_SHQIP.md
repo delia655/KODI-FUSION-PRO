@@ -7,8 +7,8 @@
 Nga ikona **GeoTrace** hapet moduli GeoTrace. Butoni `HARTA GOOGLE · SHËNO PIKA` hap `GoogleSatelliteActivity` **brenda të njëjtës APK**, jo aplikacionin e jashtëm Google Maps.
 
 Në të njëjtin ekran ka katër kontrolle:
-- **SAR · SENTINEL-1** – merr një raster real vizualizimi NASA GIBS / OPERA RTC-S1 (mozaik 12-ditor);
-- **SAR · NISAR** – merr një raster real vizualizimi NASA GIBS / NISAR L-band GCOV (mozaik 12-ditor);
+- **SAR · SENTINEL-1** – merr një raster real vizualizimi NASA GIBS / OPERA RTC-S1 (pamje ditore);
+- **SAR · NISAR** – merr një raster real vizualizimi NASA GIBS / NISAR L-band GCOV (pamje ditore);
 - **DATA SAR** – ndryshon datën e kërkuar me kalendar;
 - **HIQ SAR** – largon shtresën radar dhe lë Google Satellite të dukshme.
 
@@ -17,8 +17,8 @@ Rrëshqitësi **Dukshmëria SAR** ndryshon transparencën mbi hartën Google. Bu
 Kërkesa HTTPS drejt NASA GIBS WMS GetMap përdor `EPSG:4326`, me të njëjtin `LatLngBounds` gjeografik që përdor `GoogleMap.addGroundOverlay`. Bëhet për një zonë rreth 1×1 km me qendër te gridi, pa pretenduar rezolucion 25 cm apo 1 m nga sateliti.
 
 **Burimet e sakta**:
-- Sentinel-1: `OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1_12Day`
-- NISAR L-band: `NISAR_L2_Geocoded_Polarimetric_Covariance_12Day`
+- Sentinel-1: `OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1`
+- NISAR L-band: `NISAR_L2_Geocoded_Polarimetric_Covariance`
 - WMS: `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi`
 - Dokumentacion: https://nasa-gibs.github.io/gibs-api-docs/access-basics/
 - GIBS + NISAR: https://hyp3-docs.asf.alaska.edu/nisar-docs/worldview/
