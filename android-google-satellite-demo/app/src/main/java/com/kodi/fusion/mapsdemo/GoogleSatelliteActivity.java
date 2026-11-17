@@ -414,16 +414,65 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
                         .setPositiveButton("OK", null).show();
                     return;
                 }
-                sarStatus.setText("NASA CMR · " + scenes.size()
-                    + " skena NISAR. Asgjë nuk u vendos mbi hartë.");
-                String[] items = new String[scenes.size()];
-                for (int i=0; i<scenes.size(); i++) items[i]=scenes.get(i).label();
-                new AlertDialog.Builder(GoogleSatelliteActivity.this)
-                    .setTitle("Zgjidh skenën NISAR · CMR")
-                    .setItems(items,(dialog,which)->confirmNisarScene(scenes.get(which)))
-                    .setNegativeButton("Mbyll",null).show();
+                // The newest covering CMR granule is selected without a dialog.
+                // Google Satellite remains the base map; nothing is overlaid
+                // until the user explicitly presses SHFAQ SAR.
+                NisarCatalogSearch.Scene newest = scenes.get(0);
+                sarDate = newest.date;
+                sarStatus.setText("NISAR AUTO · skena më e re: " + newest.date
+                    + " · " + newest.collection
+                    + ". Duke provuar pamjen NASA; shfaqja mbetet manuale.");
+                loadLatestNisarPreview(scenes, 0);
             }
         });
+    }
+
+    /**
+     * Try available dated public GIBS previews automatically, latest first.
+     * CMR coverage does not guarantee GIBS visual pixels for the same date.
+     * Do not automatically add a ground overlay after a successful download.
+     */
+    private void loadLatestNisarPreview(
+            java.util.ArrayList<NisarCatalogSearch.Scene> scenes, int index) {
+        if (map == null || sarOverlay == null || scenes == null
+                || index >= scenes.size() || index >= 5) {
+            sarStatus.setText("NASA CMR gjeti skena, por NASA GIBS nuk ktheu "
+                + "pikselë për 5 datat më të reja. GCOV/HDF5 kërkon "
+                + "procesim të veçantë; nuk është shfaqur imazh i sajuar.");
+            return;
+        }
+        final NisarCatalogSearch.Scene scene = scenes.get(index);
+        sarDate = scene.date;
+        layerVisibilityButton.setText("SHFAQ SAR");
+        sarOverlay.load(NasaSarOverlay.SOURCE_NISAR, sarDate, center,
+            new NasaSarOverlay.Listener() {
+                @Override public void onStatus(String message) {
+                    sarStatus.setText("NISAR AUTO · " + scene.date + " · " + message);
+                }
+                @Override public void onSuccess(String source, String date,
+                        com.google.android.gms.maps.model.LatLngBounds area) {
+                    sarStatus.setText("NISAR GATI · " + date + " · " + scene.collection
+                        + ". Skena u zgjodh automatikisht. "
+                        + "Shtyp SHFAQ SAR për ta vendosur mbi Google Satellite.");
+                }
+                @Override public void onFailure(String error) {
+                    // A valid CMR granule can lack a corresponding public GIBS
+                    // preview. Retry a different acquisition date in order.
+                    int next = index + 1;
+                    while (next < scenes.size()
+                            && scenes.get(next).date.equals(scene.date)) next++;
+                    if (next < scenes.size() && next < 5) {
+                        sarStatus.setText("NISAR " + scene.date
+                            + " · pa pamje GIBS. Po provohet skena tjetër...");
+                        loadLatestNisarPreview(scenes, next);
+                    } else {
+                        sarStatus.setText("NISAR CMR: skenat ekzistojnë, por nuk "
+                            + "u mor pamje GIBS për këtë zonë. "
+                            + "Nuk do të shfaqet shtresë e pavërtetë. "
+                            + "Detaji: " + error);
+                    }
+                }
+            });
     }
 
     private void confirmNisarScene(NisarCatalogSearch.Scene scene) {
