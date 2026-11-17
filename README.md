@@ -39,3 +39,15 @@ Të gjitha panelet që nuk kanë skedar real tregojnë qartë **NUK KA TË DHËN
 GitHub Actions krijon APK testimi të veçantë me package `com.kodi.fusion.mapsdemo`. Kjo nuk është përditësim i V6.2. Për shkak se GitHub Actions gjeneron certifikatë debug të re, një ndërtim i ardhshëm mund të mos instalohet sipër një ndërtimi më të vjetër; për azhurnime të qëndrueshme duhet një certifikatë private e përhershme.
 
 [GitHub Actions](https://github.com/delia655/KODI-FUSION-PRO/actions) — shiko ndërtimet dhe skedarët e testimit. Data nuk dërgohet në server nga importi lokal CSV/TXT.
+
+## GeoTrace (0.3 — modul i ndarë nga SURFER)
+- Dy ikona hyrjeje në Android: **KODI FUSION PRO** dhe **GeoTrace**.
+- KODI FUSION PRO ka dy karta kryesore: **SURFER 6D** dhe **GeoTrace**.
+- GeoTrace ruan lokalisht pikat WGS84 (1, 2, 3...), shënimet, kategorinë dhe gjurmën manuale.
+- Raporti i pikës tregon burimin, shpjegimin, statusin e kontrollit në terren, dhe e deklaron qartë që nuk janë llogaritur besueshmëri ose thellësi.
+- Kur Maps SDK është i konfiguruar, shënimet vizatohen direkt mbi Google Satellite; kur nuk është i konfiguruar, mund të shtohen pika me koordinata pa hartë.
+- GeoJSON eksporti kryhet me veprim të qartë të përdoruesit, jo automatikisht.
+- **Numrat në GeoTrace janë rend kronologjik i shënimeve manuale; nuk tregojnë renditje anomalish si te VeldScan.**
+- Versioni 0.3 mbetet prototip i veçantë, jo përditësim i garantuar i V6.2.
+
+Shiko [dokumentimin GeoTrace](docs/GEOTRACE_SHQIP.md).
