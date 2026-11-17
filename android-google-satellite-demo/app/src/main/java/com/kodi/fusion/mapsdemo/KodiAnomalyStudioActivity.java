@@ -176,6 +176,15 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
                 if (vertices.size() < 3) {
                     vertices.clear();
                     Toast.makeText(this,"Poligoni kërkon të paktën 3 pika",Toast.LENGTH_LONG).show();
+                } else {
+                    // The report's WGS84 reference center must follow the AOI,
+                    // rather than retaining a coordinate from a previous grid.
+                    double lat=0,lon=0;
+                    for (LatLng point:vertices) {
+                        lat+=point.latitude;
+                        lon+=point.longitude;
+                    }
+                    center=new LatLng(lat/vertices.size(),lon/vertices.size());
                 }
                 drawArea();
             }
@@ -233,7 +242,8 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         if (centerPin != null) {centerPin.remove(); centerPin=null;}
         for (Marker pin: vertexPins) pin.remove();
         vertexPins.clear();
-        List<LatLng> p = vertices.isEmpty() ? square() : vertices;
+        List<LatLng> p = drawMode ? vertices :
+            vertices.isEmpty() ? square() : vertices;
         for (int i=0; i<vertices.size(); i++) {
             Marker pin=googleMap.addMarker(new MarkerOptions()
                 .position(vertices.get(i))
@@ -248,8 +258,9 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             incompleteLine=googleMap.addPolyline(new PolylineOptions()
                 .addAll(p).color(TEAL).width(4f));
         }
-        if (vertices.isEmpty()) {
-            centerPin=googleMap.addMarker(new MarkerOptions().position(center).title("Qendra WGS84"));
+        if (vertices.isEmpty() && !drawMode) {
+            centerPin=googleMap.addMarker(new MarkerOptions()
+                .position(center).title("Qendra WGS84"));
         }
     }
     private void clearDemo() {
