@@ -50,3 +50,18 @@ GitHub Actions aktualisht ndërton debug APK me certifikatë testimi që mund t�
 ## Statusi i testimit
 
 Kodi është kompiluar në GitHub Actions. Ende **nuk janë verifikuar në një telefon real** renderimi i Google Maps dhe marrja e imazhit NASA WMS për një zonë dhe datë të caktuar, pasi kërkohet çelësi privat përkatës. Ngarkimi WMS dhe data specifike mund të kthejnë dështim ose mungesë mbulimi. Këto janë veçori prove; **nuk është APK-ja e plotë Kodi Fusion Pro V6.2** dhe nuk duhet të çinstalohet aplikacioni ekzistues.
+
+## Sjellja e re v0.6 – kontrolli manual i shtresës SAR
+
+Ky seksion **zëvendëson udhëzimin e mëparshëm që thoshte se SAR shfaqet menjëherë gjatë shkarkimit**.
+
+- Google Satellite është harta bazë. Në hapje nuk ka shtresë NISAR/Sentinel mbi hartë.
+- `KËRKO NISAR` pyet katalogun publik NASA CMR për skena L2 GCOV. Kjo kërkon veprim të përdoruesit; skena e zgjedhur duhet të konfirmohet.
+- `MERR PAMJEN` kërkon imazhin PNG NASA GIBS për datën e skenës. Imazhi ruhet **vetëm në RAM të aplikacionit**, jo në arkiv dhe jo në server privat. Nuk shfaqet mbi Google.
+- `SHFAQ SAR` krijon `GroundOverlay` mbi Google Satellite, vetëm kur e prek përdoruesi.
+- `FSHEH SAR` e fsheh përkohësisht (ruan imazhin në RAM), `HIQ SAR` e heq fare.
+- `FILTRA PAMORË` mbështet **origjinal, bardh e zi, kontrast, konture** mbi PNG. Filtrat janë **vizualë**, nuk llogarisin radar backscatter, polarizim VV/VH, koherencë, metale ose thellësi.
+- `Dukshmëria SAR` ndryshon transparencën (nuk ndryshon të dhënat origjinale).
+- `MERR SENTINEL-1` është rruga analoge për pamje GIBS Sentinel-1.
+
+**Kufiri i këtij versioni:** Kërkimi i skenave CMR nuk është shkarkim i produktit origjinal `NISAR L2 GCOV HDF5`. Për të marrë dhe përpunuar matjet e vërteta numerike duhet një modul i veçantë me hyrje të sigurt NASA Earthdata, eksport GeoTIFF/XYZ dhe metadata. Nëse GIBS nuk ka pikselë për datën/zona, nuk shfaqet asnjë pamje e sajuar. APK-ja është prototip dhe nuk është bashkuar me V6.2.
