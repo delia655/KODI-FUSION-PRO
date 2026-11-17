@@ -128,7 +128,9 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         title.setPadding(dp(7),dp(9),dp(4),dp(4));
         top.addView(title,new LinearLayout.LayoutParams(0,dp(46),1f));
         Button topReport=button("Raporti");
-        addWeighted(top,topReport);
+        LinearLayout.LayoutParams reportTopParams=
+            new LinearLayout.LayoutParams(dp(101),dp(42));
+        top.addView(topReport,reportTopParams);
         root.addView(top);
 
         TextView disclaimer = label(
@@ -548,6 +550,7 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             : "2D HARTË · pamja satelitore nga lart.");
     }
     private void showUnavailableLayer(String name) {
+        selectedLayer=3;
         clearDemo();
         status.setText(name+" · nuk ka produkt real të ngarkuar.");
         new AlertDialog.Builder(this).setTitle(name+" · PA TË DHËNA")
@@ -571,35 +574,40 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
     }
     private String reportText() {
         StringBuilder r=new StringBuilder();
-        r.append("KODI FUSION PRO · RAPORT DEMONSTRUES\\n");
-        r.append(String.format(Locale.US,"Qendra WGS84: %.6f, %.6f\\n",
+        r.append("KODI FUSION PRO · RAPORT DEMONSTRUES\n");
+        r.append(String.format(Locale.US,"Qendra WGS84: %.6f, %.6f\n",
             center.latitude,center.longitude));
         r.append("Zona: ").append(vertices.size()>=3
             ? "Poligon / "+vertices.size()+" kulme"
-            : gridMeters+" × "+gridMeters+" m").append("\\n");
-        r.append("Gjendja e burimeve: NUK JANË SHKARKUAR RASTERE\\n");
-        r.append("Sentinel-1 / Sentinel-2 / NISAR: JO ANALIZUAR\\n");
-        r.append("GPR / ERT / magnetometri: NUK KA MATJE\\n");
-        r.append("Zgavër ose metal i konfirmuar: ASNJË\\n");
-        r.append("Thellësia: E PANJOHUR\\n");
-        r.append("Besueshmëria shkencore: NUK ËSHTË LLOGARITUR\\n\\n");
-        r.append("Pika sintetike: ").append(demoPoints.size()).append("\\n");
+            : gridMeters+" × "+gridMeters+" m").append("\n");
+        r.append("Gjendja e burimeve: NUK JANË SHKARKUAR RASTERE\n");
+        r.append("Sentinel-1 / Sentinel-2 / NISAR: JO ANALIZUAR\n");
+        r.append("GPR / ERT / magnetometri: NUK KA MATJE\n");
+        r.append("Zgavër ose metal i konfirmuar: ASNJË\n");
+        r.append("Thellësia: E PANJOHUR\n");
+        r.append("Besueshmëria shkencore: NUK ËSHTË LLOGARITUR\n\n");
+        r.append("Pika sintetike: ").append(demoPoints.size()).append("\n");
         for(int i=0;i<demoPoints.size();i++) {
             LatLng point=demoPoints.get(i);
-            r.append(String.format(Locale.US,"#%02d  %.6f, %.6f [DEMO]\\n",
+            r.append(String.format(Locale.US,"#%02d  %.6f, %.6f [DEMO]\n",
                 i+1,point.latitude,point.longitude));
         }
-        r.append("\\nKëto pika ilustrojnë navigimin dhe raportimin. ");
+        r.append("\nKëto pika ilustrojnë navigimin dhe raportimin. ");
         r.append("Asnjëra nuk është zbulim nga sateliti apo matje nëntokësore.");
         return r.toString();
     }
     private void showCandidate(int i) {
-        new AlertDialog.Builder(this).setTitle("Pika #"+i+" · DEMO")
-            .setMessage("Ky është një shembull i krijuar në aplikacion. "+
-                "Nuk është produkt i radarit, sensorit termik apo analizës optike. "+
-                "Për një vëzhgim real duhen data/skedarë satelitorë, "+
-                "rezolucioni, algoritmi dhe verifikimi në terren.")
-            .setPositiveButton("3D demo",(d,w)->show3D())
+        if(i<1||i>demoPoints.size())return;
+        LatLng p=demoPoints.get(i-1);
+        String coordinates=String.format(Locale.US,"%.6f, %.6f",
+            p.latitude,p.longitude);
+        new AlertDialog.Builder(this).setTitle("Vëzhgimi #"+i+" · DEMO")
+            .setMessage("Koordinata WGS84: "+coordinates
+                +"\\nBurimi: pikë sintetike për testim të ndërfaqes."
+                +"\\nThellësi e matur: NUK KA."
+                +"\\nRadar/termik/optik: JO TË ANALIZUAR."
+                +"\\nAsnjë përqindje besueshmërie nuk llogaritet.")
+            .setPositiveButton("3D demo",(d,w)->show3DFor(i))
             .setNegativeButton("Mbyll",null).show();
     }
     private void showReport() {
@@ -628,6 +636,9 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             .setPositiveButton("OK",null).show();
     }
     private void show3D() {
+        show3DFor(1);
+    }
+    private void show3DFor(int observation) {
         if (!demoReady) {
             new AlertDialog.Builder(this).setTitle("3D · pa të dhëna")
                 .setMessage("Nuk ka pikë aktive. Shtyp DEMO · ANALIZË për një "
@@ -639,11 +650,12 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(8),dp(8),dp(8),dp(8));
         root.setBackgroundColor(NAVY);
-        TextView note=label("3D ILLUSTRIM · rrotullo me gisht / zmadho me dy gishta. "+
-            "Boshti Z është grafik; JO thellësi e matur.",12,Color.WHITE);
+        TextView note=label("VËZHGIMI #"+observation+" · 3D DEMO. "
+            +"Rrotullo me gisht / zmadho me dy gishta. "
+            +"Boshti Z është grafik; JO thellësi e matur.",12,Color.WHITE);
         note.setPadding(dp(6),dp(8),dp(6),dp(12));
         root.addView(note);
-        VolumePreview3D preview=new VolumePreview3D();
+        VolumePreview3D preview=new VolumePreview3D(observation);
         root.addView(preview,new LinearLayout.LayoutParams(-1,dp(350)));
         SeekBar slider=new SeekBar(this);
         slider.setMax(100);slider.setProgress(62);
@@ -669,7 +681,11 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
         private float azimuth=0.45f, elevation=0.22f, zoom=1f;
         private float touchX,touchY,touchDist;
         private int threshold=62;
-        VolumePreview3D(){super(KodiAnomalyStudioActivity.this);}
+        private final int observation;
+        VolumePreview3D(int observation){
+            super(KodiAnomalyStudioActivity.this);
+            this.observation=Math.max(1,observation);
+        }
         void setThreshold(int threshold){this.threshold=threshold;invalidate();}
         private float[] projected(float x,float y,float z,float cx,float cy,float s) {
             float a=(float)Math.cos(azimuth),b=(float)Math.sin(azimuth);
@@ -697,12 +713,14 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             paint.setColor(0xffd0eaf4);paint.setStrokeWidth(dp(1));
             for(int[] e:edge)canvas.drawLine(cube[e[0]][0],cube[e[0]][1],
                 cube[e[1]][0],cube[e[1]][1],paint);
-            float[] hotspot=projected(-0.13f,0.11f,-0.08f,cx,cy,scale);
+            float hx=(float)(Math.sin(observation*1.37)*0.45);
+            float hz=(float)(Math.cos(observation*0.83)*0.42);
+            float[] hotspot=projected(hx,0.11f,hz,cx,cy,scale);
             paint.setColor(0xffef8d59);
             paint.setAlpha(50+threshold*2);
             canvas.drawCircle(hotspot[0],hotspot[1],dp(12)+threshold/10f,paint);
             paint.setAlpha(255);paint.setColor(0xffadffed);paint.setTextSize(dp(12));
-            canvas.drawText("VËLLIM DEMONSTRUES · Z JO I MATUR",dp(10),dp(23),paint);
+            canvas.drawText("VËZHGIMI #"+observation+" · Z JO I MATUR",dp(10),dp(23),paint);
             canvas.drawText("Asnjë thellësi / zgavër nuk është identifikuar.",dp(10),h-dp(15),paint);
         }
         @Override public boolean onTouchEvent(MotionEvent event){
