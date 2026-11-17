@@ -51,3 +51,12 @@ GitHub Actions krijon APK testimi të veçantë me package `com.kodi.fusion.maps
 - Versioni 0.3 mbetet prototip i veçantë, jo përditësim i garantuar i V6.2.
 
 Shiko [dokumentimin GeoTrace](docs/GEOTRACE_SHQIP.md).
+
+## Google Satellite + SAR nga NASA GIBS (v0.4)
+Në GeoTrace, `HARTA GOOGLE · SHËNO PIKA` hap hartën native **brenda APK-së**. Butonat `SAR · SENTINEL-1` dhe `SAR · NISAR` marrin pamje të gjeoreferencuara të NASA GIBS WMS dhe i shtojnë si `GroundOverlay` mbi Google Satellite. Ka zgjedhje të datës, transparencës dhe grid 25/50 m; pamja SAR merret për një zonë rreth 1 km rreth qendrës. Nuk trajtohet si zbulim automatik nëntokësor.
+
+**Verifikime të kryera:** CI ka kompiluar APK-në dhe i ka marrë me sukses imazhet PNG nga endpoint-et zyrtare NASA për të dy burimet. **Pa testim në telefon me Google Maps API key të aktivizuar nuk është verifikuar vizualisht mbivendosja.** Nuk ka të dhëna SAR të garantuara për çdo zonë/datё. Produkti mbetet aplikacion demonstrues i ndarë nga V6.2.
+
+**Për hartën Google** duhet secret-i privat `KODI_GOOGLE_MAPS_KEY`, me kufizim Android për `com.kodi.fusion.mapsdemo` dhe SHA-1 të certifikatës së APK-së. Për SHA-1 të qëndrueshme, CI mbështet secret-in opsional `KODI_DEBUG_KEYSTORE_B64`, por nuk ka ende të konfiguruar një keystore të përhershëm.
+
+Shiko [udhëzimet Google + SAR](docs/GOOGLE_SATELLITE_SAR_SHQIP.md). Mos publiko kredenciale ose skedarë privatë.
