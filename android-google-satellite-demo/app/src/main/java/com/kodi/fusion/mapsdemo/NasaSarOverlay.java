@@ -34,6 +34,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class NasaSarOverlay {
     public static final String SOURCE_S1 = "SENTINEL_1";
     public static final String SOURCE_NISAR = "NISAR_L";
+    public static final int FILTER_ORIGINAL = 0;
+    public static final int FILTER_GRAY = 1;
+    public static final int FILTER_CONTRAST = 2;
+    public static final int FILTER_EDGES = 3;
     private static final String ENDPOINT =
         "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi";
     private static final int MAX_BYTES = 8 * 1024 * 1024;
@@ -51,6 +55,9 @@ public final class NasaSarOverlay {
     private final AtomicInteger generation = new AtomicInteger(0);
     private GroundOverlay overlay;
     private Bitmap image;
+    private Bitmap rawImage;
+    private int filter = FILTER_ORIGINAL;
+    private boolean visible = true;
     private String lastSource;
     private String lastDate;
     private float transparency = 0.35f;
@@ -71,6 +78,76 @@ public final class NasaSarOverlay {
     }
 
     public boolean hasData() { return overlay != null; }
+    public boolean isVisible() { return overlay != null && visible; }
+    public int getFilter() { return filter; }
+
+    public void setVisible(boolean show) {
+        visible = show;
+        if (overlay != null) overlay.setVisible(show);
+    }
+
+    /**
+     * VISUAL ONLY: no calibration, no underlying source-radar processing.
+     * These filters work on NASA GIBS PNG colors, not NISAR GCOV/HDF5 data.
+     */
+    public void setFilter(int selected) {
+        if (selected < FILTER_ORIGINAL || selected > FILTER_EDGES) return;
+        filter = selected;
+        if (overlay == null || rawImage == null) return;
+        Bitmap next = processImage(rawImage, filter);
+        if (next == null) return;
+        Bitmap old = image;
+        image = next;
+        overlay.setImage(BitmapDescriptorFactory.fromBitmap(image));
+        if (old != null && old != rawImage && old != image) old.recycle();
+    }
+
+    private static int channel(int val) {
+        return Math.max(0, Math.min(255, val));
+    }
+
+    private static Bitmap processImage(Bitmap input, int selected) {
+        if (selected == FILTER_ORIGINAL) return input;
+        int w = input.getWidth(), h = input.getHeight();
+        int[] source = new int[w * h];
+        int[] result = new int[w * h];
+        input.getPixels(source, 0, w, 0, 0, w, h);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int i = y * w + x;
+                int color = source[i];
+                int a = Color.alpha(color);
+                if (a <= 12) { result[i] = Color.TRANSPARENT; continue; }
+                int r = Color.red(color), g = Color.green(color), b = Color.blue(color);
+                int out;
+                if (selected == FILTER_GRAY) {
+                    int lum = channel((int)(r * .299 + g * .587 + b * .114));
+                    out = Color.argb(a, lum, lum, lum);
+                } else if (selected == FILTER_CONTRAST) {
+                    out = Color.argb(a, channel((int)((r - 128) * 1.65 + 128)),
+                        channel((int)((g - 128) * 1.65 + 128)),
+                        channel((int)((b - 128) * 1.65 + 128)));
+                } else {
+                    // Visual contours using adjacent pixel color differences.
+                    // NOT a scientific edge map or an anomaly probability score.
+                    int right=source[y*w+Math.min(w-1,x+1)];
+                    int bottom=source[Math.min(h-1,y+1)*w+x];
+                    if(Color.alpha(right) <= 12 || Color.alpha(bottom) <= 12) {
+                        result[i]=Color.TRANSPARENT; continue;
+                    }
+                    int diff=Math.abs(r-Color.red(right))+Math.abs(g-Color.green(right))+
+                        Math.abs(b-Color.blue(right))+Math.abs(r-Color.red(bottom))+
+                        Math.abs(g-Color.green(bottom))+Math.abs(b-Color.blue(bottom));
+                    int edge=channel(diff*2);
+                    out=Color.argb(a,edge,edge,edge);
+                }
+                result[i] = out;
+            }
+        }
+        Bitmap output=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+        output.setPixels(result,0,w,0,0,w,h);
+        return output;
+    }
     public String getLastSource() { return lastSource; }
     public String getLastDate() { return lastDate; }
 
@@ -78,7 +155,11 @@ public final class NasaSarOverlay {
     public void clear() {
         generation.incrementAndGet();
         if (overlay != null) { overlay.remove(); overlay = null; }
-        if (image != null) { image.recycle(); image = null; }
+        if (image != null && image != rawImage) image.recycle();
+        if (rawImage != null) rawImage.recycle();
+        image = null;
+        rawImage = null;
+        visible = true;
         lastSource = null;
         lastDate = null;
     }
@@ -172,12 +253,16 @@ public final class NasaSarOverlay {
                     return;
                 }
                 if (overlay != null) { overlay.remove(); overlay = null; }
-                if (image != null) { image.recycle(); image = null; }
-                image = result;
+                if (image != null && image != rawImage) image.recycle();
+                if (rawImage != null) rawImage.recycle();
+                rawImage = result;
+                image = processImage(rawImage, filter);
+                visible = true;
                 overlay = map.addGroundOverlay(new GroundOverlayOptions()
                     .image(BitmapDescriptorFactory.fromBitmap(image))
                     .positionFromBounds(bounds)
                     .transparency(transparency)
+                    .visible(true)
                     .zIndex(0.5f));
                 if (overlay == null) {
                     callback.onFailure("Google Maps nuk pranoi shtresën SAR.");
