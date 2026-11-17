@@ -603,10 +603,10 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
             p.latitude,p.longitude);
         new AlertDialog.Builder(this).setTitle("Vëzhgimi #"+i+" · DEMO")
             .setMessage("Koordinata WGS84: "+coordinates
-                +"\\nBurimi: pikë sintetike për testim të ndërfaqes."
-                +"\\nThellësi e matur: NUK KA."
-                +"\\nRadar/termik/optik: JO TË ANALIZUAR."
-                +"\\nAsnjë përqindje besueshmërie nuk llogaritet.")
+                +"\nBurimi: pikë sintetike për testim të ndërfaqes."
+                +"\nThellësi e matur: NUK KA."
+                +"\nRadar/termik/optik: JO TË ANALIZUAR."
+                +"\nAsnjë përqindje besueshmërie nuk llogaritet.")
             .setPositiveButton("3D demo",(d,w)->show3DFor(i))
             .setNegativeButton("Mbyll",null).show();
     }
@@ -646,29 +646,53 @@ public final class KodiAnomalyStudioActivity extends Activity implements OnMapRe
                 .setPositiveButton("OK",null).show();
             return;
         }
+        android.app.Dialog dialog=new android.app.Dialog(this);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(8),dp(8),dp(8),dp(8));
+        root.setPadding(dp(12),dp(18),dp(12),dp(12));
         root.setBackgroundColor(NAVY);
-        TextView note=label("VËZHGIMI #"+observation+" · 3D DEMO. "
-            +"Rrotullo me gisht / zmadho me dy gishta. "
-            +"Boshti Z është grafik; JO thellësi e matur.",12,Color.WHITE);
+
+        LinearLayout head=row();
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title=label("VËZHGIMI #"+observation+" · MODEL 3D",19,Color.WHITE);
+        head.addView(title,new LinearLayout.LayoutParams(0,dp(52),1f));
+        Button close=button("Mbyll");
+        head.addView(close,new LinearLayout.LayoutParams(dp(84),dp(48)));
+        root.addView(head);
+        close.setOnClickListener(v->dialog.dismiss());
+
+        TextView note=label(
+            "DEMO: Model gjeometrik i simuluar. Z nuk është thellësi e matur. "
+            +"Rrotullo me një gisht; zmadho me dy gishta.",12,0xffa9d6e3);
         note.setPadding(dp(6),dp(8),dp(6),dp(12));
         root.addView(note);
         VolumePreview3D preview=new VolumePreview3D(observation);
-        root.addView(preview,new LinearLayout.LayoutParams(-1,dp(350)));
+        root.addView(preview,new LinearLayout.LayoutParams(-1,0,1f));
+
+        TextView thresholdLabel=label("PRAGU I SHFAQJES SË SINJALIT DEMO",12,TEAL);
+        thresholdLabel.setPadding(dp(8),dp(14),dp(8),dp(4));
+        root.addView(thresholdLabel);
         SeekBar slider=new SeekBar(this);
         slider.setMax(100);slider.setProgress(62);
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar s,int p,boolean fromUser) {preview.setThreshold(p);}
-            public void onStartTrackingTouch(SeekBar s) {}
-            public void onStopTrackingTouch(SeekBar s) {}
+            public void onProgressChanged(SeekBar seek,int value,boolean user) {
+                preview.setThreshold(value);
+            }
+            public void onStartTrackingTouch(SeekBar seek) {}
+            public void onStopTrackingTouch(SeekBar seek) {}
         });
-        root.addView(label("Pragu i vizualizimit demonstrues",12,TEAL));
         root.addView(slider);
-        new AlertDialog.Builder(this).setTitle("KODI · Pamja 3D DEMO")
-            .setView(root).setPositiveButton("Mbyll",null).show();
+        TextView proof=label(
+            "Vetëm tregues vizual. Pa GPR, ERT, imazh SAR të dekoduar "
+            +"ose verifikim në terren.",11,ORANGE);
+        proof.setPadding(dp(8),dp(8),dp(8),dp(16));
+        root.addView(proof);
+        dialog.setContentView(root);
+        dialog.show();
+        if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
     }
+
     @Override protected void onResume(){super.onResume();if(mapView!=null)mapView.onResume();}
     @Override protected void onPause(){if(mapView!=null)mapView.onPause();super.onPause();}
     @Override protected void onStart(){super.onStart();if(mapView!=null)mapView.onStart();}
