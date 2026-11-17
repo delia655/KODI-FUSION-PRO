@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
@@ -31,8 +34,13 @@ public final class GeoTraceOverlay {
     private static final int LIMIT = 200;
     private static final String PREFS = "geotrace_local_annotations_v1";
     private static final String KEY = "wgs84_points";
+    private static final String NOTES_KEY = "point_notes";
+    private static final String TYPES_KEY = "point_types";
+    private static final String DEFAULT_TYPE = "Vëzhgim manual";
     private final Activity activity;
     private final ArrayList<LatLng> points = new ArrayList<>();
+    private final ArrayList<String> notes = new ArrayList<>();
+    private final ArrayList<String> types = new ArrayList<>();
     private final ArrayList<Marker> pins = new ArrayList<>();
     private SharedPreferences preferences;
     private GoogleMap map;
@@ -66,6 +74,19 @@ public final class GeoTraceOverlay {
         } catch (JSONException ignored) {
             // Data may be from an old or malformed build; leave a clean local track.
         }
+        try {
+            JSONArray savedNotes = new JSONArray(preferences.getString(NOTES_KEY, "[]"));
+            JSONArray savedTypes = new JSONArray(preferences.getString(TYPES_KEY, "[]"));
+            for (int i = 0; i < points.size(); i++) {
+                notes.add(savedNotes.optString(i, ""));
+                types.add(savedTypes.optString(i, DEFAULT_TYPE));
+            }
+        } catch (JSONException ignored) {
+            for (int i = 0; i < points.size(); i++) {
+                notes.add("");
+                types.add(DEFAULT_TYPE);
+            }
+        }
     }
 
     private void persist() {
@@ -76,11 +97,35 @@ public final class GeoTraceOverlay {
             pair.put(point.longitude);
             array.put(pair);
         }
-        preferences.edit().putString(KEY, array.toString()).apply();
+        JSONArray n = new JSONArray();
+        JSONArray t = new JSONArray();
+        for (String note : notes) n.put(note);
+        for (String type : types) t.put(type);
+        preferences.edit()
+            .putString(KEY, array.toString())
+            .putString(NOTES_KEY, n.toString())
+            .putString(TYPES_KEY, t.toString())
+            .apply();
     }
 
     public boolean isEnabled() { return enabled; }
     public int count() { return points.size(); }
+
+    public LatLng getPoint(int index) {
+        if (index < 0 || index >= points.size()) throw new IndexOutOfBoundsException();
+        return points.get(index);
+    }
+
+    public String getNote(int index) { return notes.get(index); }
+    public String getType(int index) { return types.get(index); }
+
+    public void setPointDescription(int index, String type, String note) {
+        if (index < 0 || index >= points.size()) return;
+        types.set(index, type == null ? DEFAULT_TYPE : type.substring(0, Math.min(type.length(), 60)));
+        notes.set(index, note == null ? "" : note.substring(0, Math.min(note.length(), 500)));
+        persist();
+        draw();
+    }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -96,6 +141,8 @@ public final class GeoTraceOverlay {
             return false;
         }
         points.add(point);
+        notes.add("");
+        types.add(DEFAULT_TYPE);
         persist();
         draw();
         return true;
@@ -104,12 +151,16 @@ public final class GeoTraceOverlay {
     public void undo() {
         if (points.isEmpty()) return;
         points.remove(points.size() - 1);
+        notes.remove(notes.size() - 1);
+        types.remove(types.size() - 1);
         persist();
         draw();
     }
 
     public void clear() {
         points.clear();
+        notes.clear();
+        types.clear();
         persist();
         draw();
     }
@@ -125,8 +176,8 @@ public final class GeoTraceOverlay {
             Marker marker = map.addMarker(new MarkerOptions()
                 .position(points.get(i))
                 .title("GeoTrace · Pika " + (i + 1))
-                .snippet("Shënuar manualisht · WGS84")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                .snippet(types.get(i) + " · " + (notes.get(i).isEmpty() ? "Pa shënim" : notes.get(i)))
+                .icon(BitmapDescriptorFactory.fromBitmap(numberedPin(i + 1))));
             if (marker != null) pins.add(marker);
         }
         if (points.size() >= 2) {
@@ -142,6 +193,22 @@ public final class GeoTraceOverlay {
         }
     }
 
+    private Bitmap numberedPin(int label) {
+        Bitmap bitmap = Bitmap.createBitmap(82, 92, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.WHITE);
+        canvas.drawCircle(41, 39, 35, paint);
+        paint.setColor(0xff087fcd);
+        canvas.drawCircle(41, 39, 31, paint);
+        paint.setColor(Color.WHITE);
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setFakeBoldText(true);
+        paint.setTextSize(label < 10 ? 37 : 30);
+        canvas.drawText(Integer.toString(label), 41, 51, paint);
+        return bitmap;
+    }
+
     /** A manually created track in GeoJSON; not a scientific interpretation. */
     public String toGeoJson() {
         StringBuilder output = new StringBuilder();
@@ -152,7 +219,9 @@ public final class GeoTraceOverlay {
             if (i > 0) output.append(',');
             LatLng p = points.get(i);
             output.append("{\"type\":\"Feature\",\"properties\":{\"point_number\":")
-                .append(i + 1).append(",\"kind\":\"manual_marker\"},")
+                .append(i + 1).append(",\"kind\":\"manual_marker\",\"type\":")
+                .append(org.json.JSONObject.quote(types.get(i))).append(",\"note\":")
+                .append(org.json.JSONObject.quote(notes.get(i))).append("},")
                 .append("\"geometry\":{\"type\":\"Point\",\"coordinates\":")
                 .append(coords(p)).append("}}");
         }
