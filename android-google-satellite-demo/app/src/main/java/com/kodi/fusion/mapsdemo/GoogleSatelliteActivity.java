@@ -346,7 +346,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             @Override public void onSuccess(String src, String date,
                     com.google.android.gms.maps.model.LatLngBounds area) {
                 sarStatus.setText("NASA GIBS · " + NasaSarOverlay.label(src)
-                    + " · " + date + " · Mozaik 12-ditor, pamje jo matje nëntokësore.");
+                    + " · " + date + " · Pamje ditore; mbulimi varet nga data. Jo matje nëntokësore.");
             }
             @Override public void onFailure(String error) {
                 sarStatus.setText(error);
