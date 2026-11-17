@@ -103,6 +103,9 @@ public final class NasaSarOverlay {
             return;
         }
 
+        // Remove any prior overlay immediately: a failed date/source must not
+        // leave stale SAR imagery visible and mislabel it as a new acquisition.
+        clear();
         final LatLngBounds bounds = boundsFor(center, 1000.0);
         final int requestId = generation.incrementAndGet();
         callback.onStatus("Po shkarkohet pamja reale " + label(source)
