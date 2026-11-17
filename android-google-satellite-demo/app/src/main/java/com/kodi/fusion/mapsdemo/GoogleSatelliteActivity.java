@@ -53,6 +53,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     private NasaSarOverlay sarOverlay;
     private TextView sarStatus;
     private String sarDate = initialSarDate();
+    private Button layerVisibilityButton;
     private int sideMeters = 25;
     private boolean hybrid = false;
     private LatLng center = new LatLng(42.312015, 21.119746);
@@ -150,7 +151,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
 
         LinearLayout sarButtons = new LinearLayout(this);
         Button sentinel1 = makeButton("SAR · SENTINEL-1");
-        Button nisarWms = makeButton("SAR · NISAR");
+        Button nisarWms = makeButton("NISAR · KËRKO");
         Button dateButton = makeButton("DATA SAR");
         Button removeSar = makeButton("HIQ SAR");
         for (Button button : new Button[]{sentinel1, nisarWms, dateButton, removeSar}) {
@@ -160,6 +161,14 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             sarButtons.addView(button, lp);
         }
         root.addView(sarButtons);
+        LinearLayout viewControls = new LinearLayout(this);
+        Button filterButton = makeButton("FILTRAT · PAMJA");
+        layerVisibilityButton = makeButton("FSHEH / SHFAQ SAR");
+        viewControls.addView(filterButton, weightedButtonParams());
+        viewControls.addView(layerVisibilityButton, weightedButtonParams());
+        root.addView(viewControls);
+        filterButton.setOnClickListener(v -> showSarFilters());
+        layerVisibilityButton.setOnClickListener(v -> toggleSarVisibility());
 
         sarStatus = new TextView(this);
         sarStatus.setTextColor(Color.rgb(211, 234, 239));
@@ -190,7 +199,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             @Override public void onStopTrackingTouch(SeekBar view) {}
         });
         sentinel1.setOnClickListener(v -> loadSar(NasaSarOverlay.SOURCE_S1));
-        nisarWms.setOnClickListener(v -> loadSar(NasaSarOverlay.SOURCE_NISAR));
+        nisarWms.setOnClickListener(v -> showNisarCatalog());
         dateButton.setOnClickListener(v -> pickSarDate());
         removeSar.setOnClickListener(v -> {
             if (sarOverlay != null) sarOverlay.clear();
@@ -209,11 +218,11 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             LinearLayout.LayoutParams.WRAP_CONTENT));
         root.addView(bottom);
 
-        Button nisar = makeButton("NISAR · L-band / S-band · TË DHËNA REALE");
+        Button nisar = makeButton("NISAR · KATALOGU NASA · BRENDA APLIKACIONIT");
         root.addView(nisar, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
-        nisar.setOnClickListener(v -> showNisarSources());
+        nisar.setOnClickListener(v -> showNisarCatalog());
         setContentView(root);
 
         updateCoordinates();
@@ -354,6 +363,109 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
                     Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    /**
+     * NASA CMR searches actual NISAR GCOV scenes; finding a scene does not
+     * download its protected HDF5 or automatically show any overlay.
+     * Only the explicit final "VENDOS MBI GOOGLE" action requests GIBS browse.
+     */
+    private void showNisarCatalog() {
+        if (map == null) {
+            Toast.makeText(this, "Prit të ngarkohet harta Google",
+                Toast.LENGTH_LONG).show();
+            return;
+        }
+        final AlertDialog waiting = new AlertDialog.Builder(this)
+            .setTitle("Kërkim NISAR L2 GCOV")
+            .setMessage("Duke kërkuar skena reale në katalogun NASA CMR për zonën WGS84...")
+            .setNegativeButton("Anulo", (dialog, which) -> {})
+            .create();
+        waiting.show();
+        NisarCatalogSearch.search(this, center, new NisarCatalogSearch.Listener() {
+            @Override public void onLoading() {
+                sarStatus.setText("NASA CMR · Po kërkohen skenat NISAR për këtë zonë...");
+            }
+            @Override public void onError(String error) {
+                if (waiting.isShowing()) waiting.dismiss();
+                sarStatus.setText(error);
+                new AlertDialog.Builder(GoogleSatelliteActivity.this)
+                    .setTitle("Kërkimi NISAR dështoi")
+                    .setMessage(error).setPositiveButton("OK", null).show();
+            }
+            @Override public void onScenes(java.util.ArrayList<NisarCatalogSearch.Scene> scenes) {
+                if (waiting.isShowing()) waiting.dismiss();
+                if (scenes.isEmpty()) {
+                    sarStatus.setText("NASA CMR · Nuk u gjet skenë GCOV për këtë zonë.");
+                    new AlertDialog.Builder(GoogleSatelliteActivity.this)
+                        .setTitle("Nuk u gjet NISAR L2 GCOV")
+                        .setMessage("Katalogu NASA CMR nuk gjeti skena që mbulojnë zonën "
+                            + "e zgjedhur. Provo një zonë tjetër ose datën manuale SAR. "
+                            + "Nuk është bërë asnjë ngarkim mbi Google Satellite.")
+                        .setPositiveButton("OK", null).show();
+                    return;
+                }
+                sarStatus.setText("NASA CMR · " + scenes.size()
+                    + " skena NISAR. Asgjë nuk u vendos mbi hartë.");
+                String[] items = new String[scenes.size()];
+                for (int i=0; i<scenes.size(); i++) items[i]=scenes.get(i).label();
+                new AlertDialog.Builder(GoogleSatelliteActivity.this)
+                    .setTitle("Zgjidh skenën NISAR · CMR")
+                    .setItems(items,(dialog,which)->confirmNisarScene(scenes.get(which)))
+                    .setNegativeButton("Mbyll",null).show();
+            }
+        });
+    }
+
+    private void confirmNisarScene(NisarCatalogSearch.Scene scene) {
+        String info="Data reale e skenës: "+scene.date
+            +"\nKoleksioni: "+scene.collection
+            +"\nCMR ID: "+scene.conceptId
+            +"\n\nKy hap kërkon vetëm vizualizimin NASA GIBS për të njëjtën datë. "
+            +"Skedari numerik origjinal GCOV/HDF5 nuk shkarkohet këtu. "
+            +"Nuk garantohet mbulim GIBS në të njëjtën ditë dhe zonë. "
+            +"Skena nuk vendoset në hartë pa konfirmimin tënd.";
+        new AlertDialog.Builder(this)
+            .setTitle("NISAR · "+scene.date)
+            .setMessage(info)
+            .setNegativeButton("Mos e shfaq",null)
+            .setPositiveButton("VENDOS MBI GOOGLE",(dialog,which)->{
+                sarDate=scene.date;
+                loadSar(NasaSarOverlay.SOURCE_NISAR);
+            }).show();
+    }
+
+    private void showSarFilters() {
+        if (sarOverlay == null || !sarOverlay.hasData()) {
+            Toast.makeText(this,"Ngarko fillimisht një pamje SAR mbi hartë",
+                Toast.LENGTH_LONG).show();
+            return;
+        }
+        String[] names={"Origjinal · NASA PNG","Bardhë e zi · Gri",
+            "Kontrast i lartë","Konture të pamjes"};
+        new AlertDialog.Builder(this)
+            .setTitle("Filtrat e pamjes SAR")
+            .setSingleChoiceItems(names,sarOverlay.getFilter(),(dialog,which)->{
+                sarOverlay.setFilter(which);
+                String msg="Filtër pamjeje: "+names[which]
+                    +" · Nuk është analizë e vlerave origjinale radar.";
+                sarStatus.setText(msg);
+                dialog.dismiss();
+            })
+            .setNegativeButton("Anulo",null).show();
+    }
+
+    private void toggleSarVisibility() {
+        if (sarOverlay == null || !sarOverlay.hasData()) {
+            Toast.makeText(this,"Nuk ka shtresë SAR për të shfaqur ose fshehur",
+                Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean show = !sarOverlay.isVisible();
+        sarOverlay.setVisible(show);
+        sarStatus.setText(show ? "Shtresa SAR është shfaqur sipër Google Satellite."
+            : "Shtresa SAR është fshehur. Harta Google mbetet e dukshme.");
+        layerVisibilityButton.setText(show ? "FSHEH SAR" : "SHFAQ SAR");
     }
 
     private void updateGeoTraceStatus() {
