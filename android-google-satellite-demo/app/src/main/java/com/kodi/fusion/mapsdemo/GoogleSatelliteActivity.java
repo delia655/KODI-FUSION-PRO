@@ -150,8 +150,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         updateGeoTraceStatus();
 
         LinearLayout sarButtons = new LinearLayout(this);
-        Button sentinel1 = makeButton("SAR · SENTINEL-1");
-        Button nisarWms = makeButton("NISAR · KËRKO");
+        Button sentinel1 = makeButton("MERR SENTINEL-1");
+        Button nisarWms = makeButton("KËRKO NISAR");
         Button dateButton = makeButton("DATA SAR");
         Button removeSar = makeButton("HIQ SAR");
         for (Button button : new Button[]{sentinel1, nisarWms, dateButton, removeSar}) {
@@ -162,8 +162,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         }
         root.addView(sarButtons);
         LinearLayout viewControls = new LinearLayout(this);
-        Button filterButton = makeButton("FILTRAT · PAMJA");
-        layerVisibilityButton = makeButton("FSHEH / SHFAQ SAR");
+        Button filterButton = makeButton("FILTRA PAMORË");
+        layerVisibilityButton = makeButton("SHFAQ SAR");
         viewControls.addView(filterButton, weightedButtonParams());
         viewControls.addView(layerVisibilityButton, weightedButtonParams());
         root.addView(viewControls);
@@ -174,8 +174,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         sarStatus.setTextColor(Color.rgb(211, 234, 239));
         sarStatus.setTextSize(11.5f);
         sarStatus.setPadding(8, 4, 8, 7);
-        sarStatus.setText("NASA SAR · Sentinel-1 ose NISAR mbi Google Satellite. "
-            + "Data: " + sarDate + ". Disponueshmëria varet nga dita dhe zona.");
+        sarStatus.setText("Google Satellite është harta bazë. SAR është FIKUR. "
+            + "1. MERR PAMJEN; 2. FILTRA; 3. SHFAQ SAR. Data: " + sarDate + ".");
         root.addView(sarStatus);
 
         LinearLayout opacityRow = new LinearLayout(this);
@@ -203,7 +203,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         dateButton.setOnClickListener(v -> pickSarDate());
         removeSar.setOnClickListener(v -> {
             if (sarOverlay != null) sarOverlay.clear();
-            sarStatus.setText("Shtresa SAR u hoq. Harta Google mbetet brenda aplikacionit.");
+            layerVisibilityButton.setText("SHFAQ SAR");
+            sarStatus.setText("SAR u hoq nga memoria. Google Satellite mbetet harta bazë.");
         });
 
         mapView = new MapView(this);
@@ -313,7 +314,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
                 drawGrid();
                 if (sarOverlay != null && sarOverlay.hasData()) {
                     sarOverlay.clear();
-                    sarStatus.setText("Qendra ndryshoi. Ngarko SAR për zonën e re.");
+                    layerVisibilityButton.setText("SHFAQ SAR");
+                    sarStatus.setText("Qendra ndryshoi. Merr SAR për zonën e re.");
                 }
             }
         });
@@ -337,8 +339,10 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         } catch (Exception ignored) {}
         DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
             sarDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day);
+            if (sarOverlay != null) sarOverlay.clear();
+            layerVisibilityButton.setText("SHFAQ SAR");
             sarStatus.setText("NASA SAR · Data: " + sarDate
-                + " · Zgjidh Sentinel-1 ose NISAR për të marrë pamjen.");
+                + ". Pamja e mëparshme u hoq; merr të dhëna për datën e zgjedhur.");
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
            calendar.get(Calendar.DAY_OF_MONTH));
         dialog.getDatePicker().setMaxDate(System.currentTimeMillis());
@@ -350,14 +354,19 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             Toast.makeText(this, "Google Satellite nuk është gati", Toast.LENGTH_LONG).show();
             return;
         }
+        // Loading is a private in-memory action; Google map remains unchanged.
+        layerVisibilityButton.setText("SHFAQ SAR");
         sarOverlay.load(source, sarDate, center, new NasaSarOverlay.Listener() {
             @Override public void onStatus(String message) { sarStatus.setText(message); }
             @Override public void onSuccess(String src, String date,
                     com.google.android.gms.maps.model.LatLngBounds area) {
-                sarStatus.setText("NASA GIBS · " + NasaSarOverlay.label(src)
-                    + " · " + date + " · Pamje ditore; mbulimi varet nga data. Jo matje nëntokësore.");
+                layerVisibilityButton.setText("SHFAQ SAR");
+                sarStatus.setText("U MOR: " + NasaSarOverlay.label(src) + " · " + date
+                    + ". Imazhi nuk shfaqet vetë. Zgjidh FILTRA ose shtyp SHFAQ SAR. "
+                    + "Vizualizim NASA PNG, jo matje thellësie.");
             }
             @Override public void onFailure(String error) {
+                layerVisibilityButton.setText("SHFAQ SAR");
                 sarStatus.setText(error);
                 Toast.makeText(GoogleSatelliteActivity.this, error,
                     Toast.LENGTH_LONG).show();
@@ -424,12 +433,13 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             +"\n\nKy hap kërkon vetëm vizualizimin NASA GIBS për të njëjtën datë. "
             +"Skedari numerik origjinal GCOV/HDF5 nuk shkarkohet këtu. "
             +"Nuk garantohet mbulim GIBS në të njëjtën ditë dhe zonë. "
-            +"Skena nuk vendoset në hartë pa konfirmimin tënd.";
+            +"Pamja e kërkuar do të merret në memorie, por nuk do të shfaqet "
+            +"mbi Google derisa të shtypësh SHFAQ SAR.";
         new AlertDialog.Builder(this)
             .setTitle("NISAR · "+scene.date)
             .setMessage(info)
-            .setNegativeButton("Mos e shfaq",null)
-            .setPositiveButton("VENDOS MBI GOOGLE",(dialog,which)->{
+            .setNegativeButton("Anulo",null)
+            .setPositiveButton("MERR PAMJEN",(dialog,which)->{
                 sarDate=scene.date;
                 loadSar(NasaSarOverlay.SOURCE_NISAR);
             }).show();
@@ -437,7 +447,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
 
     private void showSarFilters() {
         if (sarOverlay == null || !sarOverlay.hasData()) {
-            Toast.makeText(this,"Ngarko fillimisht një pamje SAR mbi hartë",
+            Toast.makeText(this,"Merr fillimisht një pamje SAR nga NASA",
                 Toast.LENGTH_LONG).show();
             return;
         }
@@ -462,9 +472,15 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             return;
         }
         boolean show = !sarOverlay.isVisible();
-        sarOverlay.setVisible(show);
-        sarStatus.setText(show ? "Shtresa SAR është shfaqur sipër Google Satellite."
-            : "Shtresa SAR është fshehur. Harta Google mbetet e dukshme.");
+        if (!sarOverlay.setVisible(show)) {
+            sarStatus.setText("Pamja SAR nuk u vendos mbi Google. Provo ta marrësh sërish.");
+            return;
+        }
+        sarStatus.setText(show
+            ? "U SHFAQ: " + NasaSarOverlay.label(sarOverlay.getLastSource())
+                + " · " + sarOverlay.getLastDate()
+                + ". Filtrat janë vetëm vizualë."
+            : "SAR u fsheh. Pamja ruhet përkohësisht dhe Google Satellite mbetet e dukshme.");
         layerVisibilityButton.setText(show ? "FSHEH SAR" : "SHFAQ SAR");
     }
 
