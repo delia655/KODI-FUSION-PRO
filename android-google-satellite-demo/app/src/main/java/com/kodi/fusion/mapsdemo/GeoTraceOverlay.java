@@ -93,8 +93,8 @@ public final class GeoTraceOverlay {
         JSONArray array = new JSONArray();
         for (LatLng point : points) {
             JSONArray pair = new JSONArray();
-            pair.put(point.latitude);
-            pair.put(point.longitude);
+            pair.put((Object) Double.valueOf(point.latitude));
+            pair.put((Object) Double.valueOf(point.longitude));
             array.put(pair);
         }
         JSONArray n = new JSONArray();
