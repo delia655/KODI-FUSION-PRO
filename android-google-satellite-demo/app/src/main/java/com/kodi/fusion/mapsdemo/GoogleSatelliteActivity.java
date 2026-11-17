@@ -1,6 +1,9 @@
 package com.kodi.fusion.mapsdemo;
 
 import android.app.Activity;
+import android.app.DatePickerDialog;
+import android.widget.SeekBar;
+import java.util.Calendar;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -47,6 +50,9 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     private Button geoTraceToggle;
     private TextView geoTraceStatus;
     private GeoTraceOverlay geoTrace;
+    private NasaSarOverlay sarOverlay;
+    private TextView sarStatus;
+    private String sarDate = initialSarDate();
     private int sideMeters = 25;
     private boolean hybrid = false;
     private LatLng center = new LatLng(42.312015, 21.119746);
@@ -142,6 +148,55 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         });
         updateGeoTraceStatus();
 
+        LinearLayout sarButtons = new LinearLayout(this);
+        Button sentinel1 = makeButton("SAR · SENTINEL-1");
+        Button nisarWms = makeButton("SAR · NISAR");
+        Button dateButton = makeButton("DATA SAR");
+        Button removeSar = makeButton("HIQ SAR");
+        for (Button button : new Button[]{sentinel1, nisarWms, dateButton, removeSar}) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(2, 3, 2, 3);
+            sarButtons.addView(button, lp);
+        }
+        root.addView(sarButtons);
+
+        sarStatus = new TextView(this);
+        sarStatus.setTextColor(Color.rgb(211, 234, 239));
+        sarStatus.setTextSize(11.5f);
+        sarStatus.setPadding(8, 4, 8, 7);
+        sarStatus.setText("NASA SAR · Sentinel-1 ose NISAR mbi Google Satellite. "
+            + "Data: " + sarDate + ". Disponueshmëria varet nga dita dhe zona.");
+        root.addView(sarStatus);
+
+        LinearLayout opacityRow = new LinearLayout(this);
+        opacityRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView alphaLabel = new TextView(this);
+        alphaLabel.setText("Dukshmëria SAR");
+        alphaLabel.setTextColor(Color.WHITE);
+        alphaLabel.setTextSize(11f);
+        opacityRow.addView(alphaLabel);
+        SeekBar opacity = new SeekBar(this);
+        opacity.setMax(100);
+        opacity.setProgress(65);
+        opacityRow.addView(opacity, new LinearLayout.LayoutParams(0,
+            LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        root.addView(opacityRow);
+        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar view, int progress, boolean user) {
+                if (sarOverlay != null) sarOverlay.setTransparency(1f - progress / 100f);
+            }
+            @Override public void onStartTrackingTouch(SeekBar view) {}
+            @Override public void onStopTrackingTouch(SeekBar view) {}
+        });
+        sentinel1.setOnClickListener(v -> loadSar(NasaSarOverlay.SOURCE_S1));
+        nisarWms.setOnClickListener(v -> loadSar(NasaSarOverlay.SOURCE_NISAR));
+        dateButton.setOnClickListener(v -> pickSarDate());
+        removeSar.setOnClickListener(v -> {
+            if (sarOverlay != null) sarOverlay.clear();
+            sarStatus.setText("Shtresa SAR u hoq. Harta Google mbetet brenda aplikacionit.");
+        });
+
         mapView = new MapView(this);
         mapView.onCreate(state);
         root.addView(mapView, new LinearLayout.LayoutParams(
@@ -234,6 +289,7 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     public void onMapReady(GoogleMap googleMap) {
         map = googleMap;
         map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+        sarOverlay = new NasaSarOverlay(this, map);
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 19f));
         geoTrace.bind(map);
         map.setOnMapClickListener(point -> {
@@ -245,6 +301,10 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             } else {
                 center = point;
                 drawGrid();
+                if (sarOverlay != null && sarOverlay.hasData()) {
+                    sarOverlay.clear();
+                    sarStatus.setText("Qendra ndryshoi. Ngarko SAR për zonën e re.");
+                }
             }
         });
         drawGrid();
