@@ -260,13 +260,14 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         note.setTextColor(Color.WHITE);
         note.setTextSize(17);
         root.addView(note);
-        Button open = makeButton("Hap Google Maps veçmas");
-        open.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(
-                "https://www.google.com/maps/@42.312015,21.119746,18z/data=!3m1!1e3"));
-            startActivity(intent);
-        });
-        root.addView(open);
+        TextView setup = new TextView(this);
+        setup.setText("Harta Google duhet të jetë brenda aplikacionit. "
+            + "Për aktivizimin e saj dhe të shtresave SAR kërkohet një Maps SDK API key "
+            + "i kufizuar për paketën e kësaj APK-je dhe certifikatën e saj SHA-1. "
+            + "Nuk do të të drejtojmë jashtë tek Google Maps.");
+        setup.setTextColor(Color.rgb(178, 239, 231));
+        setup.setPadding(0, 15, 0, 14);
+        root.addView(setup);
         Button nisar = makeButton("NISAR · L-band NASA / S-band ISRO");
         nisar.setOnClickListener(v -> showNisarSources());
         root.addView(nisar);
@@ -308,6 +309,51 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             }
         });
         drawGrid();
+    }
+
+    private static String initialSarDate() {
+        Calendar day = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+        day.add(Calendar.DAY_OF_YEAR, -12);
+        return String.format(Locale.US, "%04d-%02d-%02d",
+            day.get(Calendar.YEAR), day.get(Calendar.MONTH) + 1,
+            day.get(Calendar.DAY_OF_MONTH));
+    }
+
+    private void pickSarDate() {
+        Calendar calendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+        try {
+            String[] parts = sarDate.split("-");
+            calendar.set(Integer.parseInt(parts[0]),
+                Integer.parseInt(parts[1]) - 1, Integer.parseInt(parts[2]));
+        } catch (Exception ignored) {}
+        DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
+            sarDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day);
+            sarStatus.setText("NASA SAR · Data: " + sarDate
+                + " · Zgjidh Sentinel-1 ose NISAR për të marrë pamjen.");
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
+           calendar.get(Calendar.DAY_OF_MONTH));
+        dialog.getDatePicker().setMaxDate(System.currentTimeMillis());
+        dialog.show();
+    }
+
+    private void loadSar(String source) {
+        if (map == null || sarOverlay == null) {
+            Toast.makeText(this, "Google Satellite nuk është gati", Toast.LENGTH_LONG).show();
+            return;
+        }
+        sarOverlay.load(source, sarDate, center, new NasaSarOverlay.Listener() {
+            @Override public void onStatus(String message) { sarStatus.setText(message); }
+            @Override public void onSuccess(String src, String date,
+                    com.google.android.gms.maps.model.LatLngBounds area) {
+                sarStatus.setText("NASA GIBS · " + NasaSarOverlay.label(src)
+                    + " · " + date + " · Mozaik 12-ditor, pamje jo matje nëntokësore.");
+            }
+            @Override public void onFailure(String error) {
+                sarStatus.setText(error);
+                Toast.makeText(GoogleSatelliteActivity.this, error,
+                    Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void updateGeoTraceStatus() {
@@ -415,7 +461,11 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     @Override protected void onResume() { super.onResume(); if (mapView != null) mapView.onResume(); }
     @Override protected void onPause() { if (mapView != null) mapView.onPause(); super.onPause(); }
     @Override protected void onStop() { if (mapView != null) mapView.onStop(); super.onStop(); }
-    @Override protected void onDestroy() { if (mapView != null) mapView.onDestroy(); super.onDestroy(); }
+    @Override protected void onDestroy() {
+        if (sarOverlay != null) sarOverlay.clear();
+        if (mapView != null) mapView.onDestroy();
+        super.onDestroy();
+    }
     @Override public void onLowMemory() { super.onLowMemory(); if (mapView != null) mapView.onLowMemory(); }
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
