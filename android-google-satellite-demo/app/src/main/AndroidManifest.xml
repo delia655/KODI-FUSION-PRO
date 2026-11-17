@@ -28,5 +28,6 @@
         </activity-alias>
         <activity android:name=".SurferPanelActivity" android:exported="false" />
         <activity android:name=".GoogleSatelliteActivity" android:exported="false" />
+        <activity android:name=".KodiAnomalyStudioActivity" android:exported="false" />
     </application>
 </manifest>

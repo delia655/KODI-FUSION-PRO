@@ -88,6 +88,25 @@ public final class KodiHomeActivity extends Activity {
         geotrace.addView(geoText,new LinearLayout.LayoutParams(0,-2,1));
         geotrace.setOnClickListener(v->startActivity(new Intent(this,GeoTraceActivity.class)));
 
+        LinearLayout anomaly=new LinearLayout(this);
+        anomaly.setOrientation(LinearLayout.VERTICAL);
+        anomaly.setPadding(dp(16),dp(14),dp(16),dp(14));
+        anomaly.setBackground(bg(0xff12352c,20));
+        LinearLayout.LayoutParams anomalyLp=new LinearLayout.LayoutParams(-1,-2);
+        anomalyLp.topMargin=dp(13);
+        root.addView(anomaly,anomalyLp);
+        anomaly.addView(text("◎ KODI ANOMALY STUDIO",20,0xff86fbe6,true));
+        TextView anomalyHint=text(
+            "Harta satelitore · Zona / Grid · Pika të numëruara · Raport · 3D",
+            12,Color.WHITE,false);
+        anomalyHint.setPadding(0,dp(7),0,dp(8));
+        anomaly.addView(anomalyHint);
+        anomaly.addView(text(
+            "Version provë: të gjitha anomalitë në DEMO janë sintetike, jo zbulime.",
+            11,0xffffc27b,false));
+        anomaly.setOnClickListener(v->startActivity(
+            new Intent(this,KodiAnomalyStudioActivity.class)));
+
         TextView footer=text(
             "Dy module të ndara brenda një aplikacioni. "
             +"GeoTrace ruan vëzhgimet lokale; Google Satellite kërkon çelës API të konfiguruar. "
