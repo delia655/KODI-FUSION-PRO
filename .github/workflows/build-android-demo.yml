@@ -42,8 +42,8 @@ jobs:
           python3 - <<'PY'
           import urllib.parse, urllib.request
           base="https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
-          for layer in ("NISAR_L2_Geocoded_Polarimetric_Covariance_12Day",
-                        "OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1_12Day"):
+          for layer in ("NISAR_L2_Geocoded_Polarimetric_Covariance",
+                        "OPERA_L2_Radiometric_Terrain_Corrected_SAR_Sentinel-1"):
               params=dict(SERVICE="WMS",VERSION="1.1.1",REQUEST="GetMap",LAYERS=layer,
                           STYLES="",SRS="EPSG:4326",FORMAT="image/png",TRANSPARENT="TRUE",
                           WIDTH=128,HEIGHT=128,BBOX="-151.7,61.0,-151.5,61.2",TIME="2026-10-01")
