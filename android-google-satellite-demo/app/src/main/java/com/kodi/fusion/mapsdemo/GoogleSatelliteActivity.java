@@ -37,12 +37,16 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
     public static final String EXTRA_LAT = "kodi.lat";
     public static final String EXTRA_LON = "kodi.lon";
     public static final String EXTRA_GRID = "kodi.grid";
+    public static final String EXTRA_GEOTRACE = "kodi.geotrace";
     private MapView mapView;
     private GoogleMap map;
     private Polygon gridPolygon;
     private Marker centerMarker;
     private TextView coordinatesLabel;
     private Button mapTypeButton;
+    private Button geoTraceToggle;
+    private TextView geoTraceStatus;
+    private GeoTraceOverlay geoTrace;
     private int sideMeters = 25;
     private boolean hybrid = false;
     private LatLng center = new LatLng(42.312015, 21.119746);
@@ -63,6 +67,9 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             showMissingKeyMessage();
             return;
         }
+
+        geoTrace = new GeoTraceOverlay(this,
+            getIntent() != null && getIntent().getBooleanExtra(EXTRA_GEOTRACE, false));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -90,6 +97,50 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         coordinatesLabel.setTextColor(Color.WHITE);
         coordinatesLabel.setPadding(6, 12, 6, 12);
         root.addView(coordinatesLabel);
+
+        LinearLayout geoControls = new LinearLayout(this);
+        geoControls.setOrientation(LinearLayout.HORIZONTAL);
+        geoTraceToggle = makeButton("◉ GeoTrace");
+        Button undoPoint = makeButton("↶ Pika");
+        Button clearPoints = makeButton("✕ Pastro");
+        Button shareTrack = makeButton("⇧ GeoJSON");
+        for (Button button : new Button[]{geoTraceToggle, undoPoint, clearPoints, shareTrack}) {
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            params.setMargins(2, 2, 2, 2);
+            geoControls.addView(button, params);
+        }
+        root.addView(geoControls);
+        geoTraceStatus = new TextView(this);
+        geoTraceStatus.setTextSize(12f);
+        geoTraceStatus.setTextColor(Color.rgb(126, 241, 231));
+        geoTraceStatus.setPadding(8, 3, 8, 9);
+        root.addView(geoTraceStatus);
+        geoTraceToggle.setOnClickListener(v -> {
+            geoTrace.setEnabled(!geoTrace.isEnabled());
+            updateGeoTraceStatus();
+        });
+        undoPoint.setOnClickListener(v -> {
+            geoTrace.undo();
+            updateGeoTraceStatus();
+        });
+        clearPoints.setOnClickListener(v -> new AlertDialog.Builder(this)
+            .setTitle("Pastro GeoTrace?")
+            .setMessage("Do të hiqen vetëm pikat dhe gjurma lokale GeoTrace. Arkivat e tjera nuk preken.")
+            .setNegativeButton("Anulo", null)
+            .setPositiveButton("Pastro", (dialog, which) -> {
+                geoTrace.clear();
+                updateGeoTraceStatus();
+            }).show());
+        shareTrack.setOnClickListener(v -> {
+            if (geoTrace.count() == 0) {
+                Toast.makeText(this, "Shto të paktën një pikë në GeoTrace",
+                    Toast.LENGTH_SHORT).show();
+                return;
+            }
+            geoTrace.shareGeoJson();
+        });
+        updateGeoTraceStatus();
 
         mapView = new MapView(this);
         mapView.onCreate(state);
@@ -149,7 +200,8 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
             + "Krijo GitHub Actions secret KODI_GOOGLE_MAPS_KEY dhe rindërto aplikacionin. "
             + "Çelësi duhet të lejojë package com.kodi.fusion.mapsdemo dhe "
             + "gjurmën SHA-1 të certifikatës së APK-së së provës.\n\n"
-            + "Gridi është gjeometrik, jo matje e nëntokës.");
+            + "Gridi është gjeometrik, jo matje e nëntokës. "
+            + "Për GeoTrace mbi hartën Google duhet i njëjti konfigurim.");
         note.setTextColor(Color.WHITE);
         note.setTextSize(17);
         root.addView(note);
@@ -183,11 +235,29 @@ public class GoogleSatelliteActivity extends Activity implements OnMapReadyCallb
         map = googleMap;
         map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 19f));
+        geoTrace.bind(map);
         map.setOnMapClickListener(point -> {
-            center = point;
-            drawGrid();
+            if (geoTrace.isEnabled()) {
+                if (!geoTrace.addManualPoint(point)) {
+                    Toast.makeText(this, "Kufiri GeoTrace: 200 pika", Toast.LENGTH_SHORT).show();
+                }
+                updateGeoTraceStatus();
+            } else {
+                center = point;
+                drawGrid();
+            }
         });
         drawGrid();
+    }
+
+    private void updateGeoTraceStatus() {
+        if (geoTraceStatus == null || geoTrace == null || geoTraceToggle == null) return;
+        geoTraceToggle.setText(geoTrace.isEnabled() ? "◉ GJURMIM ON" : "◉ GeoTrace OFF");
+        geoTraceStatus.setText(geoTrace.isEnabled()
+            ? "GeoTrace AKTIV · Prek hartën për të vendosur pika · "
+                + geoTrace.count() + " pika"
+            : "GeoTrace i ndalur · " + geoTrace.count()
+                + " pika lokale në hartë · Prek hartën për qendrën e gridit");
     }
 
     private LatLng[] corners() {
