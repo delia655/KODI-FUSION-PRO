@@ -11,8 +11,8 @@ android {
         applicationId 'com.kodi.fusion.mapsdemo'
         minSdk 23
         targetSdk 34
-        versionCode 5
-        versionName '0.4.1-google-sar-keytest'
+        versionCode 6
+        versionName '0.5-nisar-manual'
         manifestPlaceholders = [MAPS_API_KEY: (localProps.getProperty('MAPS_API_KEY') ?: '')]
     }
     compileOptions {
